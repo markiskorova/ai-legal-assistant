@@ -96,10 +96,11 @@ By the end of the MVP, the system can:
 
 ### Step 7 — `/v1/documents/{id}/findings` Endpoint
 
-- [ ] Choose persistence strategy
-- [ ] Implement findings retrieval endpoint
-- [ ] Return clause-level findings
-- [ ] Include provenance metadata
+- [x] Choose persistence strategy (ReviewRun groups findings per analysis run)
+- [x] Persist findings during `/v1/review/run`
+- [x] Implement findings retrieval endpoint
+- [x] Return clause-level findings
+- [x] Include provenance metadata
 
 ---
 
@@ -118,7 +119,7 @@ By the end of the MVP, the system can:
 - [x] Clauses extracted
 - [x] Rules + LLM findings generated
 - [x] Explainable outputs
-- [ ] Findings retrievable via API
+- [x] Findings retrievable via API
 - [ ] Optional demo UI
 
 ---

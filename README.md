@@ -131,6 +131,7 @@ ai-legal-assistant/
 | Table | Description |
 |--------|-------------|
 | `documents` | Uploaded legal texts |
+| `review_runs` | Groups one analysis run per document (audit-friendly) |
 | `findings` | Clause-level results (risk, summary, evidence, model, confidence) |
 | *(post-MVP)* `cases` | Case containers (multi-document grouping) |
 | *(post-MVP)* `case_docs` | Link table (case ↔ documents) |
