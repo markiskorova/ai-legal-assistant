@@ -1,0 +1,21 @@
+# AI Legal Assistant - requirements.txt
+# Core runtime dependencies for Docker Compose and MVP runs.
+#
+# Last updated: 2026-01-12
+
+Django>=5.2,<6.0
+djangorestframework>=3.15,<4.0
+djangorestframework-simplejwt>=5.3,<6.0
+
+python-dotenv>=1.0,<2.0
+openai>=1.0,<2.0
+PyPDF2>=3.0,<4.0
+
+# Postgres driver (required for Docker Compose setup)
+psycopg2-binary>=2.9,<3.0
+
+# Optional: pgvector (uncomment if you add VectorField models/migrations)
+# pgvector>=0.2,<1.0
+
+# Optional: production server (uncomment for deployment)
+# gunicorn>=21.2,<23.0

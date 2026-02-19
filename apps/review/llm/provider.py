@@ -1,15 +1,11 @@
 import json
-from typing import List, Dict
+import uuid
+from typing import List, Dict, Tuple
 
 from django.conf import settings
 from openai import OpenAI
 
 from .prompts import SYSTEM_PROMPT, PROMPT_REV
-
-import uuid
-from typing import Tuple
-
-client = OpenAI(api_key=getattr(settings, "OPENAI_API_KEY", None))
 
 
 def _build_clauses_payload(clauses: List[Dict]) -> List[Dict]:
@@ -26,11 +22,43 @@ def _build_clauses_payload(clauses: List[Dict]) -> List[Dict]:
     ]
 
 
-def call_llm_for_clauses(clauses: List[Dict]) -> List[Dict]:
+def _mock_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
     """
-    Calls the LLM once with all clauses and returns a list of findings.
+    Simple deterministic mock response:
+    - One finding per clause
+    - evidence_text is non-empty so your evidence gating keeps it
+    """
+    findings: List[Dict] = []
 
-    Expected raw JSON response shape:
+    for c in clauses:
+        clause_id = c["id"]
+        heading = (c.get("heading") or "").strip()
+        body = (c.get("body") or "").strip()
+
+        evidence_text = body[:200] if body else (heading[:200] if heading else "Evidence unavailable.")
+        summary = "Mock review: potential issues flagged for review."
+        if heading:
+            summary = f"Mock review ({heading}): potential issues flagged for review."
+
+        findings.append(
+            {
+                "clause_id": clause_id,
+                "severity": "medium",
+                "summary": summary,
+                "explanation": "Mock mode is enabled, so this finding was generated without an LLM call.",
+                "evidence_text": evidence_text,
+                "confidence": 0.65,
+            }
+        )
+
+    return findings
+
+
+def call_llm_for_clauses(clauses: List[Dict]) -> Tuple[List[Dict], str]:
+    """
+    Calls the LLM once with all clauses and returns (raw_findings, model_name).
+
+    Raw JSON response shape:
     {
       "findings": [
         {
@@ -40,19 +68,31 @@ def call_llm_for_clauses(clauses: List[Dict]) -> List[Dict]:
           "explanation": "string",
           "evidence_text": "string",
           "confidence": 0.0-1.0
-        },
-        ...
+        }
       ]
     }
     """
-    if not clauses:
-        return []
+    provider = getattr(settings, "LLM_PROVIDER", "openai").lower()
+
+    # 1) Quick mock check
+    if provider == "mock":
+        return _mock_findings_for_clauses(clauses), "mock"
 
     model = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
 
-    payload = {
-        "clauses": _build_clauses_payload(clauses),
-    }
+    # Always return a tuple (findings, model)
+    if not clauses:
+        return [], model
+
+    api_key = getattr(settings, "OPENAI_API_KEY", None)
+
+    # Optional: if no key, silently fall back to mock so you can keep working.
+    if not api_key:
+        return _mock_findings_for_clauses(clauses), "mock"
+
+    client = OpenAI(api_key=api_key)
+
+    payload = {"clauses": _build_clauses_payload(clauses)}
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT.strip()},
@@ -77,16 +117,15 @@ def call_llm_for_clauses(clauses: List[Dict]) -> List[Dict]:
 
     findings_raw = raw.get("findings", [])
     if not isinstance(findings_raw, list):
-        return []
-
-    # Optionally: record tokens/cost in DB later using response.usage
+        return [], model
 
     return findings_raw, model
+
 
 def generate_llm_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
     """
     Public function:
-    - Calls the LLM
+    - Calls the LLM (or mock)
     - Normalizes the raw JSON into internal finding dicts
     """
     raw_findings, model = call_llm_for_clauses(clauses)
@@ -100,9 +139,9 @@ def generate_llm_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
             continue
 
         severity = item.get("severity", "medium")
-        summary = item.get("summary", "").strip()
-        explanation = item.get("explanation", "").strip()
-        evidence_text = item.get("evidence_text", "").strip()
+        summary = (item.get("summary") or "").strip()
+        explanation = (item.get("explanation") or "").strip()
+        evidence_text = (item.get("evidence_text") or "").strip()
         confidence = item.get("confidence", 0.8)
 
         if not evidence_text:
