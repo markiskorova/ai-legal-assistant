@@ -25,3 +25,8 @@ Thumbs.db
 # Docs/build artifacts
 dist/
 build/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/

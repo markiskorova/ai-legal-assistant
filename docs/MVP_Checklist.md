@@ -106,10 +106,10 @@ By the end of the MVP, the system can:
 
 ### Step 8 — Minimal Frontend (Optional)
 
-- [ ] Upload UI
-- [ ] Run analysis
-- [ ] Display findings
-- [ ] Evidence toggle
+- [x] Upload UI
+- [x] Run analysis
+- [x] Display findings
+- [x] Evidence toggle
 
 ---
 
@@ -120,7 +120,7 @@ By the end of the MVP, the system can:
 - [x] Rules + LLM findings generated (strictly schema-validated)
 - [x] Explainable outputs (evidence spans + provenance metadata)
 - [x] Findings retrievable via API
-- [ ] Optional demo UI
+- [x] Optional demo UI
 
 ---
 

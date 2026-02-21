@@ -1,172 +1,120 @@
-# ⚖️ AI Legal Assistant
+# AI Legal Assistant
 
-**AI Legal Assistant** is a modular, transparent, and extensible web application that demonstrates how large language models can *augment* — not replace — legal reasoning.
+AI Legal Assistant is a modular Django + React project for document-level legal analysis with explainable findings.
 
-It provides a structured, explainable interface for:
-- Clause extraction and classification  
-- Contract risk analysis and redline suggestions  
-- Plain-language clause summaries  
-- Evidence provenance and explainability  
-- *(Planned post-MVP)* Multi-document case reasoning and strategy mapping  
+## Current MVP
 
----
+The MVP currently supports:
+- Uploading legal documents (`.txt` and `.pdf`)
+- Clause extraction
+- Deterministic rule checks plus LLM analysis
+- Persisting review runs and findings
+- Retrieving findings by document (optionally by run)
+- A minimal React + TypeScript UI for upload, run, and findings review
 
-## 📚 Docs
+## Tech Stack
 
-- **MVP checklist (GitHub-friendly):** [`docs/MVP_Checklist.md`](docs/MVP_Checklist.md)
-- **Post-MVP implementation plan:** [`docs/POST_MVP_PLAN.md`](docs/POST_MVP_PLAN.md)
-- **Project article / design rationale:** [`docs/AI_Legal_Assistant_Article_2025_10_29.md`](docs/AI_Legal_Assistant_Article_2025_10_29.md)
+- Backend: Django 5 + Django REST Framework
+- LLM: OpenAI API with strict JSON schema validation
+- Auth library available: `djangorestframework-simplejwt`
+- Database:
+  - SQLite for local dev by default
+  - PostgreSQL 16 in Docker Compose
+- Frontend: React 18 + TypeScript + Vite
+- Container orchestration: Docker Compose
 
----
+## Repository Layout
 
-## 🧭 Purpose
-
-The goal of this project is to build an **AI-native legal reasoning platform** — a proof-of-concept that combines deterministic rule-based checks with LLM-driven insights.  
-It is designed for research, portfolio demonstration, or as a foundation for legal-tech SaaS products (e.g., Eve Legal / LegalOn-style workflows).
-
-**Key Principles**
-- **Explainable:** Every finding links to evidence and rationale.  
-- **Auditable:** Model version, prompt revision, and confidence are tracked.  
-- **Modular:** Each domain (documents, review, cases, strategy, explain) is its own app.  
-- **Extensible:** Built with Django’s modular app structure and clean APIs.
-
----
-
-## ✅ MVP Scope
-
-The MVP focuses on **document-level** analysis:
-
-**Upload / ingest → extract clauses → rules + LLM → return findings (with provenance)**
-
-Anything beyond document-level (cases, strategy, observability dashboards) is tracked as **post-MVP** work.
-Post-MVP starts with **Phase 1 foundations**: always-async runs, idempotency, persisted chunk artifacts, and spreadsheet ingestion.
-
----
-
-## ⚙️ Functionality Overview
-
-| Module | Description |
-|---------|-------------|
-| **Documents** | Upload, parse, and store legal documents (contracts, NDAs, policies). |
-| **Review** | Clause extraction, rule checks, summarization, and risk scoring (rules + LLM). |
-| **Cases (planned)** | Aggregate multiple documents into a case; extract entities & issues. |
-| **Strategy (planned)** | Generate next-action insights (negotiation, compliance, risk mitigation). |
-| **Explain (planned)** | Surface model provenance, evidence spans, and rationale metadata. |
-| **Jobs (post-MVP Phase 1)** | Always-async review orchestration, status tracking, retries, and idempotency. |
-| **Metrics (post-MVP)** | Phase 1 captures tokens/timings/cache metrics; Phase 5 adds dashboards/alerts. |
-
-**Data Flow (target architecture):**
-
-![Workflow Diagram](./docs/ai_legal_article_workflow_d.png)
-
-```
-Document → Findings → Case → Issues → Strategy → Explainability
-```
-
----
-
-## 🧩 Tech Stack
-
-| Layer | Technology |
-|--------|-------------|
-| **Backend** | Django + Django REST Framework (DRF) |
-| **Auth** | JWT via `djangorestframework-simplejwt` |
-| **Database** | SQLite (dev) → PostgreSQL 16 (prod, pgvector optional) |
-| **Object Storage** | AWS S3 (presigned uploads) *(post-MVP)* |
-| **Background Tasks** | Celery + Redis *(post-MVP Phase 1)* |
-| **Frontend** | Minimal HTML or lightweight React dashboard *(optional)* |
-| **LLM Interface** | OpenAI (GPT-4o) with JSON schema validation |
-| **Infrastructure** | Docker + Terraform (AWS ECS + RDS + S3) *(post-MVP)* |
-| **CI/CD** | GitHub Actions (lint, test, deploy) |
-| **Post-MVP** | Prometheus + Grafana for observability |
-
----
-
-## 🧱 Architecture Overview
-
-```
+```text
 ai-legal-assistant/
-├── apps/
-│   ├── accounts/     # JWT auth (optional for MVP demo mode)
-│   ├── documents/    # Uploads, parsing, ingestion
-│   ├── review/       # Clause analysis (rules + LLM)
-│   ├── cases/        # (planned) Multi-document aggregation
-│   ├── strategy/     # (planned) Strategy mapping and issue generation
-│   ├── explain/      # (planned) Evidence and model provenance
-│   ├── jobs/         # (post-MVP Phase 1) Async orchestration
-│   └── metrics/      # (post-MVP) Instrumentation + observability
-├── docs/
-│   ├── MVP_Checklist.md
-│   ├── POST_MVP_PLAN.md
-│   └── AI_Legal_Assistant_Article_2025_10_29.md
-├── infra/
-│   ├── docker/
-│   ├── terraform/
-│   └── github-actions/
-└── README.md
+|-- apps/
+|   |-- accounts/
+|   |-- documents/
+|   `-- review/
+|-- backend/
+|-- docker/
+|-- docs/
+|-- frontend/
+|-- docker-compose.yml
+|-- Dockerfile
+|-- manage.py
+`-- requirements.txt
 ```
 
----
+## API Endpoints (Implemented)
 
-## 🧠 API Endpoints
+- `GET /` - health check
+- `POST /v1/documents/upload` - upload/ingest a document
+- `POST /v1/review/run` - run clause extraction + rules + LLM analysis
+- `GET /v1/documents/{id}/findings` - retrieve findings for latest run
+- `GET /v1/documents/{id}/findings?run_id=<uuid>` - retrieve findings for a specific run
 
-### MVP (document-level)
+## Run Locally (Backend + Frontend)
 
-| Endpoint | Method | Description |
-|-----------|---------|-------------|
-| `/v1/documents/upload` | POST | Upload or ingest a document (PDF/text) |
-| `/v1/review/run` | POST | Run clause extraction + rules + LLM analysis |
-| `/v1/documents/{id}/findings` | GET | Retrieve clause-level findings for a document |
+1. Create and activate a virtual environment.
+2. Install backend dependencies.
+3. Apply migrations.
+4. Run the backend.
+5. Install frontend dependencies and run Vite.
 
-### Post-MVP (planned)
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
 
-| Endpoint | Method | Description |
-|-----------|---------|-------------|
-| `/v1/review-runs/{id}` | GET | Retrieve run status, lifecycle timestamps, and processing metadata |
-| `/v1/search/findings` | GET | Search findings across documents with filters/facets |
-| `/v1/cases/create` | POST | Create case with multiple documents |
-| `/v1/cases/{id}/aggregate` | GET | Aggregate findings → issues/entities |
-| `/v1/strategy/suggest` | POST | Generate strategy suggestions |
-| `/v1/explain/{finding_id}` | GET | Retrieve provenance and rationale |
+In a second terminal:
 
----
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
-## 📊 Database Schema (Core)
+URLs:
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:5173`
 
-| Table | Description |
-|--------|-------------|
-| `documents` | Uploaded legal texts |
-| `review_runs` | Groups one analysis run per document (audit-friendly) |
-| `findings` | Clause-level results (risk, summary, evidence, model, confidence) |
-| *(post-MVP)* `artifacts` / `chunks` | Persisted preprocessing artifacts for stable provenance (`chunk_id`) |
-| *(post-MVP)* `cases` | Case containers (multi-document grouping) |
-| *(post-MVP)* `case_docs` | Link table (case ↔ documents) |
-| *(post-MVP)* `entities` | Extracted parties, dates, or amounts |
-| *(post-MVP)* `issues` | Aggregated reasoning results |
-| *(post-MVP)* `jobs` | Async run orchestration metadata (queue status, retries, idempotency) |
+## Run with Docker Compose
 
----
+```powershell
+docker compose up --build
+```
 
-## 🧭 Roadmap
+Compose services:
+- `db` (PostgreSQL 16)
+- `web` (Django API on port 8000)
+- `frontend` (Vite dev server on port 5173)
 
-| Phase | Focus | Deliverables |
-|--------|--------|--------------|
-| **MVP** | Document analysis | Upload → Extract → Analyze → Findings API |
-| **Phase 1** | Async + ingestion foundation | Queued review runs, idempotency, chunk artifacts, spreadsheet ingestion, run instrumentation |
-| **Phase 2** | Search + quality loop | Elasticsearch search APIs, eval harness, internal debug tooling |
-| **Phase 3** | Case reasoning | Case containers, aggregation, entities/issues |
-| **Phase 4** | Strategy & explainability | Strategy suggestions, evidence/provenance views |
-| **Phase 5** | Observability & governance | Dashboards, alerts, runbooks, deployment hardening |
+## Environment
 
----
+Use `.env` (or copy from `.env.example`) for configuration:
+- `LLM_PROVIDER` (`mock` or `openai`)
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
 
-## 🧑‍💻 Contributors
+Note:
+- If `LLM_PROVIDER=mock`, analysis runs without external API calls.
+- If `LLM_PROVIDER=openai` and no API key is set, the code falls back to mock findings.
 
-- [**Marc McAllister**](https://www.linkedin.com/in/marc-mcallister-41506b3/) — Lead Developer & Architect  
-- Contributions welcome!
+## Validation Commands
 
----
+```powershell
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py test -v 1
+cd frontend; npm run build
+```
 
-## 🪶 License
+## Project Docs
 
-MIT License © 2025 Marc McAllister
+- `docs/MVP_Checklist.md`
+- `docs/POST_MVP_PLAN.md`
+- `docs/AI_Legal_ARCHITECTURE.md`
+- `docs/verification_logs/`
+
+## License
+
+MIT

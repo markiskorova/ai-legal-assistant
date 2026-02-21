@@ -1,4 +1,4 @@
-# ⚖️ AI Legal Assistant — ARCHITECTURE.md (v5)
+﻿# âš–ï¸ AI Legal Assistant â€” ARCHITECTURE.md (v5)
 
 This document is the **canonical architecture** for the **AI Legal Assistant** project.
 
@@ -8,8 +8,8 @@ It describes:
 - the **data contracts** for findings + provenance,
 - and the **planned phase extensions** (pgvector expansion, Elasticsearch search/indexing, Celery orchestration, Kubernetes deployment, etc.).
 
-> **Status note (important):** The MVP currently returns **structured findings** from `POST /v1/review/run`.  
-> **Findings persistence + retrieval** (Postgres system-of-record + pgvector) is tracked as **Step 7** in `docs/MVP_Checklist.md` and is **not yet completed**.
+> **Status note (important):** MVP Step 7 is complete.  
+> Findings are persisted and retrievable via `GET /v1/documents/{id}/findings`, with strict JSON schema enforcement and evidence spans.
 
 **Related docs**
 - `README.md` (project overview)
@@ -32,13 +32,13 @@ Provide a modular architecture for **document-level legal analysis** that combin
 ### 1.2 Core principles
 
 - **Explainable outputs:** Every finding includes evidence and a source (`rule` vs `llm`).
-- **Auditable runs:** Each run records model/prompt metadata; findings are designed to be persisted (Step 7).
+- **Auditable runs:** Each run records model/prompt metadata; findings are persisted and retrievable.
 - **Modular apps:** Django apps are organized as bounded contexts under `apps/`.
-- **Incremental sophistication:** Rules first → structured LLM analysis → persistence (Postgres) → semantic layer (pgvector) → search/indexing (Elasticsearch) → multi-document reasoning (cases/strategy).
+- **Incremental sophistication:** Rules first â†’ structured LLM analysis â†’ persistence (Postgres) â†’ semantic layer (pgvector) â†’ search/indexing (Elasticsearch) â†’ multi-document reasoning (cases/strategy).
 
 ### 1.3 Non-goals (MVP)
 
-- End-to-end “legal advice”
+- End-to-end â€œlegal adviceâ€
 - Fully automated negotiation / autonomous agents
 - Full case management UI
 - Large-scale multi-tenant SaaS hardening (RBAC, billing, enterprise audit logs)
@@ -51,7 +51,7 @@ Provide a modular architecture for **document-level legal analysis** that combin
 
 **Document-level only**
 
-- `apps/documents`: ingestion and storage (PDF/text → extracted text)
+- `apps/documents`: ingestion and storage (PDF/text â†’ extracted text)
 - `apps/review`: clause extraction, rule engine, LLM analysis, response DTOs
 - `apps/accounts`: optional auth boundary (SimpleJWT; can be minimal for demo)
 
@@ -59,18 +59,19 @@ Provide a modular architecture for **document-level legal analysis** that combin
 
 ```
 Document (text)
-  → Clause Extraction
-  → Rule Engine + LLM Analysis
-  → Findings (structured JSON response)
+  â†’ Clause Extraction
+  â†’ Rule Engine + LLM Analysis
+  â†’ Findings (structured JSON response)
 ```
 
-### 2.2 MVP Step 7 (tracked work)
+### 2.2 MVP Step 7 (completed)
 
-**Step 7 — Findings persistence + retrieval (Postgres + pgvector)**
+**Step 7 - Findings persistence + retrieval**
 
 - Persist findings as the **system-of-record** (Postgres)
-- Store embeddings (pgvector) to support semantic similarity
+- Persist `review_runs` and link findings to runs for auditability
 - Add retrieval endpoint: `GET /v1/documents/{id}/findings`
+- Keep pgvector integration as a post-MVP extension
 
 ### 2.3 Phase extensions (documented here; not MVP)
 
@@ -91,14 +92,15 @@ Planned bounded contexts (may be implemented as new apps or services):
 
 ```
 ai-legal-assistant/
-├── apps/
-│   ├── accounts/        # Auth (JWT / SimpleJWT)
-│   ├── documents/       # Document ingestion + storage
-│   └── review/          # Clause extraction + rules + LLM analysis (+ DTOs)
-├── backend/             # Django project wiring (settings/urls/asgi/wsgi)
-├── docs/                # Architecture, MVP checklist, rationale, roadmap
-├── infra/               # (phase) Terraform / Kubernetes manifests, etc.
-└── scripts/             # (optional) fixtures, benchmarks, index rebuild, etc.
+|-- apps/
+|   |-- accounts/        # Auth (JWT / SimpleJWT)
+|   |-- documents/       # Document ingestion + storage
+|   `-- review/          # Clause extraction + rules + LLM analysis (+ DTOs)
+|-- backend/             # Django project wiring (settings/urls/asgi/wsgi)
+|-- frontend/            # React + TypeScript demo UI (Vite)
+|-- docs/                # Architecture, MVP checklist, rationale, roadmap
+|-- infra/               # (phase) Terraform / Kubernetes manifests, etc.
+`-- scripts/             # (optional) fixtures, benchmarks, index rebuild, etc.
 ```
 
 ---
@@ -108,7 +110,7 @@ ai-legal-assistant/
 ### 4.1 Runtime components (MVP)
 
 - **API layer (DRF)**
-  - endpoints for upload + review run (and later retrieval)
+  - endpoints for upload + review run + findings retrieval
   - request validation and auth boundary (optional for demo)
 
 - **Document ingestion**
@@ -130,13 +132,9 @@ ai-legal-assistant/
 
 ### 4.2 Planned components (phase)
 
-- **Findings persistence**
-  - Postgres tables for documents, clauses (optional), findings, runs
-  - upsert strategy (replace per document per run)
-
 - **Semantic layer (pgvector)**
   - embeddings stored with findings (and/or clauses)
-  - similarity search for “find similar findings/clauses”
+  - similarity search for â€œfind similar findings/clausesâ€
 
 - **Search index (Elasticsearch)**
   - derived index (rebuildable from Postgres)
@@ -176,16 +174,15 @@ ai-legal-assistant/
 4. LLM analysis runs on clauses and/or rule outputs
 5. Aggregate findings into a single structured response
 
-**Current behavior:** returns findings in the response payload.  
-**Step 7 behavior:** also persists findings + run metadata.
+**Current behavior:** returns findings in the response payload and persists findings + run metadata.
 
-### 5.3 Persist + retrieve findings (Step 7)
+### 5.3 Persist + retrieve findings (implemented)
 
 **Persist**
 - `review_run` creates a `run` record and writes findings
 - choose an upsert strategy:
-  - “replace findings for document” (simple) **or**
-  - “append per run” (auditable history)
+  - â€œreplace findings for documentâ€ (simple) **or**
+  - â€œappend per runâ€ (auditable history)
 
 **Retrieve**
 - `GET /v1/documents/{id}/findings` returns:
@@ -197,8 +194,8 @@ ai-legal-assistant/
 
 - Store `embedding` on each finding (and/or clause)
 - Provide query endpoint (phase) for:
-  - “find similar findings”
-  - “find similar clauses”
+  - â€œfind similar findingsâ€
+  - â€œfind similar clausesâ€
 
 Guideline: Postgres remains the system of record; vectors are stored with the record.
 
@@ -252,8 +249,8 @@ Below is a minimal canonical model. Implementation can evolve, but **auditabilit
 - `summary` (text)
 - `recommendation` (text, nullable)
 - `source` (`rule|llm`)
-- `evidence` (json) — list of spans and excerpts
-- `provenance` (json) — model, confidence, prompt_rev, etc.
+- `evidence` (json) â€” list of spans and excerpts
+- `provenance` (json) â€” model, confidence, prompt_rev, etc.
 - `created_at`
 
 ### 6.4 `clauses` (optional table)
@@ -271,7 +268,7 @@ You can persist clause segmentation to support reproducibility and indexing.
 
 Add to `findings` (initially):
 
-- `embedding` (vector) — embedding for finding text (or clause text)
+- `embedding` (vector) â€” embedding for finding text (or clause text)
 - `embedding_model` (string, nullable)
 - `embedded_at`
 
@@ -338,18 +335,15 @@ Add to `findings` (initially):
 
 - `POST /v1/documents/upload`
 - `POST /v1/review/run`
-
-### 8.2 Step 7 endpoint (planned)
-
 - `GET /v1/documents/{id}/findings`
 
-### 8.3 Phase endpoints (planned)
+### 8.2 Phase endpoints (planned)
 
 - Search:
   - `GET /v1/search?query=...&severity=...&type=...`
 - Jobs:
-  - `POST /v1/review/jobs` (create async run)
-  - `GET /v1/jobs/{id}` (status)
+  - `POST /v1/review/run` (async enqueue mode in Phase 1)
+  - `GET /v1/review-runs/{id}` (status)
 - Cases/Strategy/Explain:
   - `/v1/cases/*`
   - `/v1/strategy/*`
@@ -362,7 +356,7 @@ Add to `findings` (initially):
 ### 9.1 Auth boundary
 
 - Use JWT (SimpleJWT) for authenticated endpoints when needed.
-- MVP can allow a “demo mode” boundary where auth is optional, but keep auth pluggable.
+- MVP can allow a â€œdemo modeâ€ boundary where auth is optional, but keep auth pluggable.
 
 ### 9.2 Data handling
 
@@ -387,7 +381,7 @@ Add to `findings` (initially):
 ### 10.1 Local development
 
 - SQLite can be used for quick local dev.
-- Postgres is the intended system-of-record and should be used for Step 7 onward.
+- Postgres is the intended system-of-record for current and future phases.
 - Docker is recommended for consistent environments.
 
 ### 10.2 CI/CD
@@ -440,19 +434,19 @@ A typical K8s layout:
 
 These extensions are designed to be implemented as **additive layers** on top of the MVP.
 
-### Phase A — Orchestration + indexing
+### Phase A â€” Orchestration + indexing
 
 - Async review runs (Celery + Redis) with persistent job state
 - Elasticsearch indexing from Postgres (derived store)
 - Search endpoints with filtering/faceting and highlight snippets
 
-### Phase B — Contract families + composite versions
+### Phase B â€” Contract families + composite versions
 
-- Link base agreements + amendments into “families”
-- Produce “composite” versions (timeline snapshots)
+- Link base agreements + amendments into â€œfamiliesâ€
+- Produce â€œcompositeâ€ versions (timeline snapshots)
 - Diff summaries with evidence + provenance
 
-### Phase C — Deviation analysis (“buried risk”)
+### Phase C â€” Deviation analysis (â€œburied riskâ€)
 
 - Normalize clause fields (e.g., termination notice, liability cap, governing law)
 - Compare against baseline clause profiles per contract type
@@ -460,7 +454,7 @@ These extensions are designed to be implemented as **additive layers** on top of
 
 ---
 
-## Appendix A — Glossary
+## Appendix A â€” Glossary
 
 - **Finding:** A structured, evidence-linked output (risk, issue, suggestion).
 - **Provenance:** Metadata about how a finding was generated (model, prompt, confidence, source).
@@ -469,4 +463,5 @@ These extensions are designed to be implemented as **additive layers** on top of
 
 ---
 
-*Last updated: January 9, 2026*
+*Last updated: February 21, 2026*
+
