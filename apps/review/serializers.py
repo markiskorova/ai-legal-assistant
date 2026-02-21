@@ -7,6 +7,7 @@ class ReviewRunRequestSerializer(serializers.Serializer):
     """Request body for POST /v1/review/run."""
 
     document_id = serializers.UUIDField()
+    idempotency_key = serializers.CharField(required=False, allow_blank=False, max_length=255)
 
 
 class ReviewRunSerializer(serializers.ModelSerializer):
@@ -16,6 +17,7 @@ class ReviewRunSerializer(serializers.ModelSerializer):
         model = ReviewRun
         fields = [
             "id",
+            "idempotency_key",
             "status",
             "llm_model",
             "prompt_rev",

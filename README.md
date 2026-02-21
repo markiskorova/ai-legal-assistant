@@ -22,6 +22,7 @@ The MVP currently supports:
   - PostgreSQL 16 in Docker Compose
 - Frontend: React 18 + TypeScript + Vite
 - Container orchestration: Docker Compose
+- Async jobs (Phase 2 skeleton): Celery + Redis
 
 ## Repository Layout
 
@@ -73,6 +74,12 @@ npm install
 npm run dev
 ```
 
+Optional (Phase 2 worker) in a third terminal:
+
+```powershell
+celery -A backend worker -l info
+```
+
 URLs:
 - Backend: `http://localhost:8000`
 - Frontend: `http://localhost:5173`
@@ -85,7 +92,9 @@ docker compose up --build
 
 Compose services:
 - `db` (PostgreSQL 16)
+- `redis` (Celery broker/result backend)
 - `web` (Django API on port 8000)
+- `worker` (Celery worker)
 - `frontend` (Vite dev server on port 5173)
 
 ## Environment
@@ -95,6 +104,7 @@ Use `.env` (or copy from `.env.example`) for configuration:
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
+- `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`
 
 Note:
 - If `LLM_PROVIDER=mock`, analysis runs without external API calls.
@@ -111,6 +121,7 @@ cd frontend; npm run build
 ## Project Docs
 
 - `docs/MVP_Checklist.md`
+- `docs/PHASE_2_Checklist.md`
 - `docs/POST_MVP_PLAN.md`
 - `docs/AI_Legal_ARCHITECTURE.md`
 - `docs/verification_logs/`

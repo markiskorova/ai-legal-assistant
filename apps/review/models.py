@@ -1,11 +1,15 @@
 import uuid
+from django.db.models import Q
 from django.db import models
 from apps.documents.models import Document
 
 
 class ReviewRunStatus(models.TextChoices):
-    COMPLETED = "completed", "Completed"
+    QUEUED = "queued", "Queued"
+    RUNNING = "running", "Running"
+    SUCCEEDED = "succeeded", "Succeeded"
     FAILED = "failed", "Failed"
+    PARTIAL = "partial", "Partial"
 
 
 class FindingSeverity(models.TextChoices):
@@ -25,17 +29,30 @@ class ReviewRun(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="review_runs")
+    idempotency_key = models.CharField(max_length=255, null=True, blank=True)
 
     status = models.CharField(
         max_length=20,
         choices=ReviewRunStatus.choices,
-        default=ReviewRunStatus.COMPLETED,
+        default=ReviewRunStatus.QUEUED,
     )
     llm_model = models.CharField(max_length=50, null=True, blank=True)
     prompt_rev = models.CharField(max_length=200, null=True, blank=True)
     error = models.TextField(null=True, blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document", "idempotency_key"],
+                condition=Q(idempotency_key__isnull=False),
+                name="uniq_reviewrun_document_idempotency_key",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["status", "created_at"], name="reviewrun_status_created_idx"),
+        ]
 
 
 class Finding(models.Model):

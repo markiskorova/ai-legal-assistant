@@ -5,9 +5,9 @@ from .models import Finding, ReviewRun
 
 @admin.register(ReviewRun)
 class ReviewRunAdmin(admin.ModelAdmin):
-    list_display = ("id", "document", "status", "llm_model", "prompt_rev", "created_at")
+    list_display = ("id", "document", "status", "idempotency_key", "llm_model", "prompt_rev", "created_at")
     list_filter = ("status", "llm_model", "prompt_rev")
-    search_fields = ("id", "document__title")
+    search_fields = ("id", "document__title", "idempotency_key")
 
 
 @admin.register(Finding)

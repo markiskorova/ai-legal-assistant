@@ -23,5 +23,6 @@ COPY . /app
 
 # Ensure entrypoint script is executable
 RUN chmod +x /app/docker/entrypoint.sh
+RUN chmod +x /app/docker/worker-entrypoint.sh
 
 EXPOSE 8000

@@ -10,6 +10,7 @@ djangorestframework-simplejwt>=5.3,<6.0
 python-dotenv>=1.0,<2.0
 openai>=1.0,<2.0
 PyPDF2>=3.0,<4.0
+celery[redis]>=5.4,<6.0
 
 # Postgres driver (required for Docker Compose setup)
 psycopg2-binary>=2.9,<3.0
