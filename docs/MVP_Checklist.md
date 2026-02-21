@@ -128,10 +128,15 @@ By the end of the MVP, the system can:
 
 - Case aggregation
 - Strategy suggestions
-- Observability
+- Async orchestration (always-async review runs, status polling, idempotency)
+- Layout-aware preprocessing with persisted chunk artifacts and chunk-level finding references
+- Spreadsheet ingestion (`.xlsx` / `.csv`) with canonical row windows and evidence pointers
+- Eval harness + internal debug tooling (failure labeling, output diffs, provenance tracing)
+- Cost/latency instrumentation + caching (token counts, stage timings, cache hits/misses)
+- Observability dashboards
 - RBAC
 - Production infra
 
 ---
 
-*Last updated: November 14, 2025*
+*Last updated: February 21, 2026*

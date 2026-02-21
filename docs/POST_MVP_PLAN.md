@@ -31,11 +31,11 @@ This document translates the **README** + **Architecture v5** roadmap into an im
 | Phase | Name | Primary outcome | Dependencies |
 |---:|---|---|---|
 | 0 | Finish MVP Step 7 | Persisted findings + retrieval + run audit trail | Existing MVP steps |
-| 1 | Async orchestration | `review/run` becomes queued; job status + retries | Phase 0 |
-| 2 | Elasticsearch search layer | Fast cross-document search + filters/facets | Phase 0–1 (recommended) |
+| 1 | Async orchestration + ingestion hardening | `review/run` becomes queued; idempotency, chunk artifacts, spreadsheet ingestion, run metrics | Phase 0 |
+| 2 | Search + quality loop | Fast cross-document search + filters/facets + eval/debug tooling | Phase 0–1 (recommended) |
 | 3 | Contract families + composites | Base + amendments graph; effective “as-of” composites | Phase 0–2 |
 | 4 | Deviation analysis (“buried risk”) | Compare normalized clauses vs baseline profiles | Phase 3 (preferred) |
-| 5 | Production-ish ops | K8s + Terraform + observability + eval harness | Any prior phase |
+| 5 | Production-ish ops | K8s + Terraform + observability dashboards/runbooks | Any prior phase |
 
 ---
 
@@ -78,15 +78,18 @@ Make “auditability” real: runs and findings are persisted, queryable, and re
 
 ---
 
-## Phase 1 — Async orchestration (Celery + Redis)
+## Phase 1 — Async orchestration + ingestion hardening (Celery + Redis)
 
 ### Objective
-Support long-running reviews without blocking requests; add retries/idempotency and clear run status.
+Support long-running reviews without blocking requests; add retries/idempotency, clear run status, richer provenance artifacts, and broader ingestion.
 
 ### Definition of Done
-- `POST /v1/review/run` can enqueue a job and return `run_id`
+- `POST /v1/review/run` is always async (enqueue + return `run_id`)
 - Workers execute the pipeline and persist results
 - Idempotency key supported (prevents duplicate runs for same request)
+- Chunk artifacts are persisted per run and findings reference stable `chunk_id`
+- Spreadsheet ingestion (`.xlsx` / `.csv`) feeds the same downstream review pipeline
+- Run-level instrumentation is captured (token counts, stage timings, cache hits/misses)
 - Retry policy and failure modes are explicit (including partial results policy)
 
 ### PR-sized task slices
@@ -104,23 +107,34 @@ Support long-running reviews without blocking requests; add retries/idempotency 
 - **PR-1.5: Status & progress**
   - `GET /v1/review-runs/{id}` returns status + timestamps
   - Optional: progress markers per stage (extract/rules/llm/persist)
-- **PR-1.6: Cost controls**
+- **PR-1.6: Layout-aware preprocessing + chunk artifacts**
+  - Add preprocessing stage that emits stable chunk IDs
+  - Persist chunk artifacts (JSON/table) with schema versioning
+  - Ensure findings include `chunk_id` (plus optional span metadata)
+- **PR-1.7: Spreadsheet ingestion**
+  - Add `.xlsx` / `.csv` parsers
+  - Normalize to canonical row representation (sheet/row/cell values)
+  - Generate row-window chunks and spreadsheet evidence pointers
+- **PR-1.8: Instrumentation + cache controls**
   - Concurrency caps
   - Rate limiting per user/org (basic)
-  - Token usage and cost fields recorded (optional but recommended)
+  - Token usage, stage timings, and cache hit/miss fields recorded
+  - Lightweight cache key strategy (`doc_hash + prompt_rev + schema_version`)
 
 ---
 
-## Phase 2 — Elasticsearch indexing + Search API
+## Phase 2 — Search + quality loop (Elasticsearch + eval/debug)
 
 ### Objective
-Make the system usable across a corpus: fast search, filters, and facets.
+Make the system usable across a corpus and safer to iterate on: fast search plus an internal evaluation/debug workflow.
 
 ### Definition of Done
 - ES index mapping for documents + findings (and clauses if persisted)
 - Indexer pipeline (DB → ES) with backfill + reindex strategy
 - Search endpoints with filtering/faceting:
   - search findings by keyword + severity + type + date + doc metadata
+- Eval harness runs against a labeled corpus and reports output diffs/regressions
+- Internal debug tooling supports failure labeling and provenance trace review
 - Clear “source-of-truth” rule: Postgres authoritative; ES derived
 
 ### PR-sized task slices
@@ -143,6 +157,14 @@ Make the system usable across a corpus: fast search, filters, and facets.
 - **PR-2.6: Test & validation**
   - Contract tests for search filters
   - Smoke tests in compose
+- **PR-2.7: Eval harness**
+  - Add labeled corpus + expected findings format
+  - Runner command to compare outputs across prompt/model revisions
+  - Persist evaluation summaries for trend tracking
+- **PR-2.8: Internal debug tooling**
+  - Failure labeling workflow
+  - Structured run-to-run diff view (prompt/model version comparisons)
+  - Chunk → extraction → finding provenance inspection
 
 ---
 
@@ -209,7 +231,7 @@ Detect non-obvious risk by comparing clause content and normalized fields agains
 
 ---
 
-## Phase 5 — Deployment & Operations maturity (Kubernetes + Terraform + Observability + Eval)
+## Phase 5 — Deployment & Operations maturity (Kubernetes + Terraform + Observability)
 
 ### Objective
 Make the project deployable and maintainable as a realistic SaaS backend prototype.
@@ -218,7 +240,7 @@ Make the project deployable and maintainable as a realistic SaaS backend prototy
 - K8s deployment for API + worker; managed Postgres recommended; optional ES/Redis
 - Terraform provisions core infra (networking, secrets, storage, compute)
 - Prometheus metrics + Grafana dashboards
-- Evaluation harness (synthetic corpus + regression checks) to prevent silent quality regressions
+- Production runbooks for operation, incident response, and rollback
 
 ### PR-sized task slices
 - **PR-5.1: Container hardening**
@@ -233,10 +255,7 @@ Make the project deployable and maintainable as a realistic SaaS backend prototy
 - **PR-5.4: Observability**
   - Metrics: run duration, queue depth, failures, token usage, cost
   - Dashboards + alert thresholds (lightweight)
-- **PR-5.5: Evaluation harness**
-  - Synthetic contract set + golden outputs
-  - Regression runner in CI (diff structured outputs; allow tolerance)
-- **PR-5.6: Documentation + runbooks**
+- **PR-5.5: Documentation + runbooks**
   - “How to deploy” + “How to reindex” + “How to roll back prompts”
 
 ---
@@ -274,9 +293,9 @@ These are coarse estimates for a single developer. They assume clean scope bound
 
 If your goal is “most impressive proof-of-work fastest”:
 1. **Phase 0** (make auditability real)
-2. **Phase 1** (async jobs + run status + cost controls)
-3. **Phase 2** (search; demo value increases sharply)
-4. **Phase 5 (partial)** (basic metrics + dashboards early)
+2. **Phase 1** (async jobs + run status + chunk provenance + spreadsheet ingestion)
+3. **Phase 2** (search + eval/debug loop; demo value increases sharply)
+4. **Phase 5 (partial)** (dashboards and runbooks hardening)
 5. **Phase 3** (families + composites)
 6. **Phase 4** (deviation analysis)
 
@@ -285,11 +304,11 @@ If your goal is “most impressive proof-of-work fastest”:
 ## Optional: deliverable-oriented milestones (for demos)
 
 - **Milestone M1:** Persisted findings + run audit trail + retrieval
-- **Milestone M2:** Async runs + job status + retries + token/cost reporting
-- **Milestone M3:** Search UI-ready API (ES backed) with facets (severity/type/source)
+- **Milestone M2:** Async runs + job status + retries + chunk artifacts + spreadsheet ingestion + token/timing reporting
+- **Milestone M3:** Search UI-ready API (ES backed) + eval harness + internal debug workflow
 - **Milestone M4:** Contract family graph + “as-of” composite + auditable change summaries
 - **Milestone M5:** Deviation dashboard endpoints (top deviations by clause type)
 
 ---
 
-*Last updated: January 9, 2026*
+*Last updated: February 21, 2026*

@@ -14,6 +14,7 @@ It provides a structured, explainable interface for:
 ## 📚 Docs
 
 - **MVP checklist (GitHub-friendly):** [`docs/MVP_Checklist.md`](docs/MVP_Checklist.md)
+- **Post-MVP implementation plan:** [`docs/POST_MVP_PLAN.md`](docs/POST_MVP_PLAN.md)
 - **Project article / design rationale:** [`docs/AI_Legal_Assistant_Article_2025_10_29.md`](docs/AI_Legal_Assistant_Article_2025_10_29.md)
 
 ---
@@ -38,6 +39,7 @@ The MVP focuses on **document-level** analysis:
 **Upload / ingest → extract clauses → rules + LLM → return findings (with provenance)**
 
 Anything beyond document-level (cases, strategy, observability dashboards) is tracked as **post-MVP** work.
+Post-MVP starts with **Phase 1 foundations**: always-async runs, idempotency, persisted chunk artifacts, and spreadsheet ingestion.
 
 ---
 
@@ -50,8 +52,8 @@ Anything beyond document-level (cases, strategy, observability dashboards) is tr
 | **Cases (planned)** | Aggregate multiple documents into a case; extract entities & issues. |
 | **Strategy (planned)** | Generate next-action insights (negotiation, compliance, risk mitigation). |
 | **Explain (planned)** | Surface model provenance, evidence spans, and rationale metadata. |
-| **Jobs (optional)** | Background processing via Celery for async LLM and parsing tasks. |
-| **Metrics (post-MVP)** | Observability and cost tracking (tokens, cost, latency). |
+| **Jobs (post-MVP Phase 1)** | Always-async review orchestration, status tracking, retries, and idempotency. |
+| **Metrics (post-MVP)** | Phase 1 captures tokens/timings/cache metrics; Phase 5 adds dashboards/alerts. |
 
 **Data Flow (target architecture):**
 
@@ -71,7 +73,7 @@ Document → Findings → Case → Issues → Strategy → Explainability
 | **Auth** | JWT via `djangorestframework-simplejwt` |
 | **Database** | SQLite (dev) → PostgreSQL 16 (prod, pgvector optional) |
 | **Object Storage** | AWS S3 (presigned uploads) *(post-MVP)* |
-| **Background Tasks** | Celery + Redis *(optional)* |
+| **Background Tasks** | Celery + Redis *(post-MVP Phase 1)* |
 | **Frontend** | Minimal HTML or lightweight React dashboard *(optional)* |
 | **LLM Interface** | OpenAI (GPT-4o) with JSON schema validation |
 | **Infrastructure** | Docker + Terraform (AWS ECS + RDS + S3) *(post-MVP)* |
@@ -91,10 +93,11 @@ ai-legal-assistant/
 │   ├── cases/        # (planned) Multi-document aggregation
 │   ├── strategy/     # (planned) Strategy mapping and issue generation
 │   ├── explain/      # (planned) Evidence and model provenance
-│   ├── jobs/         # (optional) Celery orchestration
-│   └── metrics/      # (post-MVP) Observability
+│   ├── jobs/         # (post-MVP Phase 1) Async orchestration
+│   └── metrics/      # (post-MVP) Instrumentation + observability
 ├── docs/
 │   ├── MVP_Checklist.md
+│   ├── POST_MVP_PLAN.md
 │   └── AI_Legal_Assistant_Article_2025_10_29.md
 ├── infra/
 │   ├── docker/
@@ -119,6 +122,8 @@ ai-legal-assistant/
 
 | Endpoint | Method | Description |
 |-----------|---------|-------------|
+| `/v1/review-runs/{id}` | GET | Retrieve run status, lifecycle timestamps, and processing metadata |
+| `/v1/search/findings` | GET | Search findings across documents with filters/facets |
 | `/v1/cases/create` | POST | Create case with multiple documents |
 | `/v1/cases/{id}/aggregate` | GET | Aggregate findings → issues/entities |
 | `/v1/strategy/suggest` | POST | Generate strategy suggestions |
@@ -133,11 +138,12 @@ ai-legal-assistant/
 | `documents` | Uploaded legal texts |
 | `review_runs` | Groups one analysis run per document (audit-friendly) |
 | `findings` | Clause-level results (risk, summary, evidence, model, confidence) |
+| *(post-MVP)* `artifacts` / `chunks` | Persisted preprocessing artifacts for stable provenance (`chunk_id`) |
 | *(post-MVP)* `cases` | Case containers (multi-document grouping) |
 | *(post-MVP)* `case_docs` | Link table (case ↔ documents) |
 | *(post-MVP)* `entities` | Extracted parties, dates, or amounts |
 | *(post-MVP)* `issues` | Aggregated reasoning results |
-| *(optional)* `jobs` | LLM run logs (tokens, cost, model) |
+| *(post-MVP)* `jobs` | Async run orchestration metadata (queue status, retries, idempotency) |
 
 ---
 
@@ -146,9 +152,11 @@ ai-legal-assistant/
 | Phase | Focus | Deliverables |
 |--------|--------|--------------|
 | **MVP** | Document analysis | Upload → Extract → Analyze → Findings API |
-| **Phase 2** | Case reasoning | Case containers, aggregation, entities/issues |
-| **Phase 3** | Strategy & explainability | Strategy suggestions, evidence/provenance views |
-| **Phase 4** | Observability & governance | Cost dashboards, audit logs, rate limits |
+| **Phase 1** | Async + ingestion foundation | Queued review runs, idempotency, chunk artifacts, spreadsheet ingestion, run instrumentation |
+| **Phase 2** | Search + quality loop | Elasticsearch search APIs, eval harness, internal debug tooling |
+| **Phase 3** | Case reasoning | Case containers, aggregation, entities/issues |
+| **Phase 4** | Strategy & explainability | Strategy suggestions, evidence/provenance views |
+| **Phase 5** | Observability & governance | Dashboards, alerts, runbooks, deployment hardening |
 
 ---
 
