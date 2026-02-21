@@ -10,7 +10,8 @@ Given a list of clauses, you will:
   - severity: "low", "medium", or "high"
   - summary: a one-sentence plain-language summary of the issue
   - explanation: a short explanation in lawyer-friendly language
-  - evidence_text: an exact quote from the clause that supports your finding
+  - evidence_text: an exact quote from the clause body that supports your finding
+  - evidence_span: {"start": int, "end": int} character offsets into the clause body where evidence_text appears (end exclusive)
   - confidence: a number between 0 and 1
 
 If a clause seems neutral or unremarkable, you may omit it (no finding).

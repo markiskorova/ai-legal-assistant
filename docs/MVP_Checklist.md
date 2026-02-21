@@ -77,8 +77,8 @@ By the end of the MVP, the system can:
 
 - [x] Integrate OpenAI client
 - [x] Versioned prompts
-- [x] JSON schema validation
-- [x] Evidence spans required
+- [x] JSON schema validation (strict enforcement)
+- [x] Evidence spans required (offset-based spans persisted and returned)
 - [x] Provenance metadata
 - [x] `.env` configuration
 
@@ -117,8 +117,8 @@ By the end of the MVP, the system can:
 
 - [x] Documents ingested
 - [x] Clauses extracted
-- [x] Rules + LLM findings generated
-- [x] Explainable outputs
+- [x] Rules + LLM findings generated (strictly schema-validated)
+- [x] Explainable outputs (evidence spans + provenance metadata)
 - [x] Findings retrievable via API
 - [ ] Optional demo UI
 
@@ -140,3 +140,5 @@ By the end of the MVP, the system can:
 ---
 
 *Last updated: February 21, 2026*
+
+

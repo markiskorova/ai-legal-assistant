@@ -3,28 +3,39 @@ from django.db import models
 from apps.documents.models import Document
 
 
+class ReviewRunStatus(models.TextChoices):
+    COMPLETED = "completed", "Completed"
+    FAILED = "failed", "Failed"
+
+
+class FindingSeverity(models.TextChoices):
+    LOW = "low", "Low"
+    MEDIUM = "medium", "Medium"
+    HIGH = "high", "High"
+
+
+class FindingSource(models.TextChoices):
+    RULE = "rule", "Rule"
+    LLM = "llm", "LLM"
+    UNKNOWN = "unknown", "Unknown"
+
+
 class ReviewRun(models.Model):
     """Represents a single analysis run for a given Document."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="review_runs")
 
-    status = models.CharField(max_length=20, default="completed")  # completed | failed
+    status = models.CharField(
+        max_length=20,
+        choices=ReviewRunStatus.choices,
+        default=ReviewRunStatus.COMPLETED,
+    )
     llm_model = models.CharField(max_length=50, null=True, blank=True)
     prompt_rev = models.CharField(max_length=200, null=True, blank=True)
     error = models.TextField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def to_dict(self):
-        return {
-            "id": str(self.id),
-            "status": self.status,
-            "model": self.llm_model,
-            "prompt_rev": self.prompt_rev,
-            "error": self.error,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-        }
 
 
 class Finding(models.Model):
@@ -50,9 +61,10 @@ class Finding(models.Model):
     explanation = models.TextField(null=True, blank=True)
 
     # Keep max_length=20 for migration compatibility (was "risk")
-    severity = models.CharField(max_length=20)
+    severity = models.CharField(max_length=20, choices=FindingSeverity.choices)
     evidence = models.TextField()
-    source = models.CharField(max_length=20)  # rule | llm
+    evidence_span = models.JSONField(null=True, blank=True)
+    source = models.CharField(max_length=20, choices=FindingSource.choices)
 
     rule_code = models.CharField(max_length=64, null=True, blank=True)
     
@@ -61,22 +73,3 @@ class Finding(models.Model):
     prompt_rev = models.CharField(max_length=200, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def to_dict(self):
-        return {
-            "id": str(self.id),
-            "run_id": str(self.run_id) if self.run_id else None,
-            "clause_id": self.clause_id,
-            "clause_heading": self.clause_heading,
-            "clause_body": self.clause_body,
-            "summary": self.summary,
-            "severity": self.severity,
-            "explanation": self.explanation,
-            "evidence": self.evidence,
-            "source": self.source,
-            "rule_code": self.rule_code,
-            "model": self.model,
-            "confidence": self.confidence,
-            "prompt_rev": self.prompt_rev,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-        }

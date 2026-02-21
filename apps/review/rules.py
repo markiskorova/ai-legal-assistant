@@ -14,6 +14,7 @@ def _make_finding(
     summary: str,
     explanation: str,
     evidence_text: str,
+    evidence_span: Dict[str, int],
 ) -> Dict:
     return {
         "id": str(uuid.uuid4()),
@@ -23,6 +24,7 @@ def _make_finding(
         "summary": summary,
         "explanation": explanation,
         "evidence_text": evidence_text.strip(),
+        "evidence_span": evidence_span,
         "source": "rule",
     }
 
@@ -61,7 +63,24 @@ def _short_snippet(text: str, max_len: int = 280) -> str:
     text = text.strip()
     if len(text) <= max_len:
         return text
-    return text[: max_len - 3].rstrip() + "..."
+    # Keep exact text so span lookup remains deterministic.
+    return text[:max_len]
+
+
+def _span_for_evidence(text: str, evidence_text: str) -> Dict[str, int]:
+    haystack = text or ""
+    needle = (evidence_text or "").strip()
+
+    if not haystack:
+        return {"start": 0, "end": 1}
+    if not needle:
+        return {"start": 0, "end": min(1, len(haystack))}
+
+    idx = haystack.find(needle)
+    if idx == -1:
+        return {"start": 0, "end": min(len(haystack), max(1, len(needle)))}
+
+    return {"start": idx, "end": idx + len(needle)}
 
 
 # --------------------------------------------------------------------
@@ -109,6 +128,7 @@ def rule_termination_notice_period(clause: Dict, **kwargs) -> List[Dict]:
             summary=summary,
             explanation=explanation,
             evidence_text=evidence,
+            evidence_span=_span_for_evidence(text, evidence),
         )
     )
     return findings
@@ -140,6 +160,7 @@ def rule_indemnity_clause(clause: Dict, **kwargs) -> List[Dict]:
             summary=summary,
             explanation=explanation,
             evidence_text=evidence,
+            evidence_span=_span_for_evidence(text, evidence),
         )
     ]
 
@@ -175,6 +196,7 @@ def rule_confidentiality_duration(clause: Dict, **kwargs) -> List[Dict]:
                 summary=summary,
                 explanation=explanation,
                 evidence_text=evidence,
+                evidence_span=_span_for_evidence(text, evidence),
             )
         ]
 
@@ -189,7 +211,7 @@ def rule_confidentiality_duration(clause: Dict, **kwargs) -> List[Dict]:
         summary = "Confidentiality obligations longer than 5 years."
         explanation = (
             f"The confidentiality clause appears to apply for {max_years} years, "
-            "which may be longer than common 2–5 year periods."
+            "which may be longer than common 2-5 year periods."
         )
         evidence = _short_snippet(text)
         findings.append(
@@ -200,6 +222,7 @@ def rule_confidentiality_duration(clause: Dict, **kwargs) -> List[Dict]:
                 summary=summary,
                 explanation=explanation,
                 evidence_text=evidence,
+                evidence_span=_span_for_evidence(text, evidence),
             )
         )
 
@@ -235,6 +258,7 @@ def rule_governing_law_mismatch(clause: Dict, *, preferred_jurisdiction: str = "
             summary=summary,
             explanation=explanation,
             evidence_text=evidence,
+            evidence_span=_span_for_evidence(text, evidence),
         )
     ]
 

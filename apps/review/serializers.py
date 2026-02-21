@@ -39,6 +39,7 @@ class FindingSerializer(serializers.ModelSerializer):
             "explanation",
             "severity",
             "evidence",
+            "evidence_span",
             "source",
             "rule_code",
             "model",

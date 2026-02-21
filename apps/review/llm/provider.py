@@ -6,6 +6,7 @@ from django.conf import settings
 from openai import OpenAI
 
 from .prompts import SYSTEM_PROMPT, PROMPT_REV
+from .schema import FINDINGS_JSON_SCHEMA, LLMValidationError, validate_llm_response
 
 
 def _build_clauses_payload(clauses: List[Dict]) -> List[Dict]:
@@ -36,6 +37,7 @@ def _mock_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
         body = (c.get("body") or "").strip()
 
         evidence_text = body[:200] if body else (heading[:200] if heading else "Evidence unavailable.")
+        evidence_end = len(evidence_text)
         summary = "Mock review: potential issues flagged for review."
         if heading:
             summary = f"Mock review ({heading}): potential issues flagged for review."
@@ -47,6 +49,7 @@ def _mock_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
                 "summary": summary,
                 "explanation": "Mock mode is enabled, so this finding was generated without an LLM call.",
                 "evidence_text": evidence_text,
+                "evidence_span": {"start": 0, "end": evidence_end if evidence_end > 0 else 1},
                 "confidence": 0.65,
             }
         )
@@ -76,7 +79,8 @@ def call_llm_for_clauses(clauses: List[Dict]) -> Tuple[List[Dict], str]:
 
     # 1) Quick mock check
     if provider == "mock":
-        return _mock_findings_for_clauses(clauses), "mock"
+        validated = validate_llm_response({"findings": _mock_findings_for_clauses(clauses)})
+        return validated["findings"], "mock"
 
     model = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
 
@@ -88,7 +92,8 @@ def call_llm_for_clauses(clauses: List[Dict]) -> Tuple[List[Dict], str]:
 
     # Optional: if no key, silently fall back to mock so you can keep working.
     if not api_key:
-        return _mock_findings_for_clauses(clauses), "mock"
+        validated = validate_llm_response({"findings": _mock_findings_for_clauses(clauses)})
+        return validated["findings"], "mock"
 
     client = OpenAI(api_key=api_key)
 
@@ -109,17 +114,35 @@ def call_llm_for_clauses(clauses: List[Dict]) -> Tuple[List[Dict], str]:
         model=model,
         messages=messages,
         temperature=0.1,
-        response_format={"type": "json_object"},
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "contract_clause_findings",
+                "strict": True,
+                "schema": FINDINGS_JSON_SCHEMA,
+            },
+        },
     )
 
     content = response.choices[0].message.content
     raw = json.loads(content)
 
-    findings_raw = raw.get("findings", [])
-    if not isinstance(findings_raw, list):
-        return [], model
+    validated = validate_llm_response(raw)
+    findings_raw = validated["findings"]
 
     return findings_raw, model
+
+
+def _is_span_in_clause_body(span: Dict[str, int], body: str) -> bool:
+    if not isinstance(span, dict):
+        return False
+    start = span.get("start")
+    end = span.get("end")
+    if not isinstance(start, int) or not isinstance(end, int):
+        return False
+    if start < 0 or end <= start:
+        return False
+    return end <= len(body)
 
 
 def generate_llm_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
@@ -142,11 +165,18 @@ def generate_llm_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
         summary = (item.get("summary") or "").strip()
         explanation = (item.get("explanation") or "").strip()
         evidence_text = (item.get("evidence_text") or "").strip()
+        evidence_span = item.get("evidence_span")
         confidence = item.get("confidence", 0.8)
 
         if not evidence_text:
             # Simple "evidence gating": skip items without evidence.
             continue
+
+        clause_body = (by_clause_id[clause_id].get("body") or "")
+        if not _is_span_in_clause_body(evidence_span, clause_body):
+            raise LLMValidationError(
+                f"evidence_span out of bounds for clause_id={clause_id}"
+            )
 
         normalized.append(
             {
@@ -157,6 +187,7 @@ def generate_llm_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
                 "summary": summary,
                 "explanation": explanation,
                 "evidence_text": evidence_text,
+                "evidence_span": evidence_span,
                 "source": "llm",
                 "confidence": float(confidence),
                 "model": model,
