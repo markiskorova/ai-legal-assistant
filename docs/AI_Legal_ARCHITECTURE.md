@@ -342,7 +342,7 @@ Add to `findings` (initially):
 - Search:
   - `GET /v1/search?query=...&severity=...&type=...`
 - Jobs:
-  - `POST /v1/review/run` (async enqueue mode in Phase 1)
+  - `POST /v1/review/run` (async enqueue mode in Phase 2)
   - `GET /v1/review-runs/{id}` (status)
 - Cases/Strategy/Explain:
   - `/v1/cases/*`
