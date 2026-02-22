@@ -1,4 +1,4 @@
-# AI Legal Assistant — Phase 2 Checklist
+# AI Legal Assistant - Phase 2 Checklist
 
 ## Purpose of Phase 2
 
@@ -32,7 +32,7 @@ By the end of Phase 2, the system can:
 
 ## Phase 2 Build Checklist
 
-### Step 1 — Celery + Redis skeleton (PR-2.1)
+### Step 1 - Celery + Redis skeleton (PR-2.1)
 
 - [x] Add Celery app configuration
 - [x] Add Redis to Docker Compose
@@ -41,7 +41,7 @@ By the end of Phase 2, the system can:
 
 ---
 
-### Step 2 — Job model + idempotency (PR-2.2)
+### Step 2 - Job model + idempotency (PR-2.2)
 
 - [x] Add `idempotency_key` to run model (or separate table)
 - [x] Enforce uniqueness for `(document_id, idempotency_key)`
@@ -49,7 +49,7 @@ By the end of Phase 2, the system can:
 
 ---
 
-### Step 3 — Enqueue pathway (PR-2.3)
+### Step 3 - Enqueue pathway (PR-2.3)
 
 - [x] Update `POST /v1/review/run` to create run + enqueue worker task
 - [x] Return `run_id` immediately with async status semantics
@@ -57,68 +57,68 @@ By the end of Phase 2, the system can:
 
 ---
 
-### Step 4 — Worker execution + safe retries (PR-2.4)
+### Step 4 - Worker execution + safe retries (PR-2.4)
 
-- [ ] Move review pipeline orchestration into worker execution
-- [ ] Persist lifecycle transitions (`queued` → `running` → terminal state)
-- [ ] Ensure retries do not duplicate findings
-- [ ] Capture failure reason and partial-result behavior
-
----
-
-### Step 5 — Status and progress API (PR-2.5)
-
-- [ ] Extend `GET /v1/review-runs/{id}` for lifecycle status/timestamps
-- [ ] Add optional stage progress markers (extract/rules/llm/persist)
-- [ ] Standardize status/error response contract
+- [x] Move review pipeline orchestration into worker execution
+- [x] Persist lifecycle transitions (`queued` -> `running` -> terminal state)
+- [x] Ensure retries do not duplicate findings
+- [x] Capture failure reason and partial-result behavior
 
 ---
 
-### Step 6 — Layout-aware preprocessing + chunk artifacts (PR-2.6)
+### Step 5 - Status and progress API (PR-2.5)
 
-- [ ] Add preprocessing stage producing stable `chunk_id` values
-- [ ] Persist chunk artifacts with schema versioning
-- [ ] Ensure findings reference `chunk_id` (+ optional span metadata)
-
----
-
-### Step 7 — Spreadsheet ingestion (PR-2.7)
-
-- [ ] Add `.xlsx` parser
-- [ ] Add `.csv` parser
-- [ ] Normalize rows to canonical representation (sheet/row/cell values)
-- [ ] Generate row-window chunks + spreadsheet evidence pointers
+- [x] Extend `GET /v1/review-runs/{id}` for lifecycle status/timestamps
+- [x] Add optional stage progress markers (extract/rules/llm/persist)
+- [x] Standardize status/error response contract
 
 ---
 
-### Step 8 — Instrumentation + cache controls (PR-2.8)
+### Step 6 - Layout-aware preprocessing + chunk artifacts (PR-2.6)
 
-- [ ] Record token usage per run
-- [ ] Record stage timings
-- [ ] Record cache hit/miss fields
-- [ ] Add basic concurrency caps and rate limits
-- [ ] Define lightweight cache key strategy (`doc_hash + prompt_rev + schema_version`)
+- [x] Add preprocessing stage producing stable `chunk_id` values
+- [x] Persist chunk artifacts with schema versioning
+- [x] Ensure findings reference `chunk_id` (+ optional span metadata)
 
 ---
 
-### Step 9 — Validation and release hardening
+### Step 7 - Spreadsheet ingestion (PR-2.7)
 
-- [ ] Integration test: enqueue → run → persist → retrieve
-- [ ] Idempotency and retry-path test coverage
-- [ ] Failure-mode tests (worker crash, timeout, partial policy)
-- [ ] Update API docs and runbook notes
+- [x] Add `.xlsx` parser
+- [x] Add `.csv` parser
+- [x] Normalize rows to canonical representation (sheet/row/cell values)
+- [x] Generate row-window chunks + spreadsheet evidence pointers
+
+---
+
+### Step 8 - Instrumentation + cache controls (PR-2.8)
+
+- [x] Record token usage per run
+- [x] Record stage timings
+- [x] Record cache hit/miss fields
+- [x] Add basic concurrency caps and rate limits
+- [x] Define lightweight cache key strategy (`doc_hash + prompt_rev + schema_version`)
+
+---
+
+### Step 9 - Validation and release hardening
+
+- [x] Integration test: enqueue -> run -> persist -> retrieve
+- [x] Idempotency and retry-path test coverage
+- [x] Failure-mode tests (worker crash, timeout, partial policy)
+- [x] Update API docs and runbook notes
 
 ---
 
 ## Phase 2 Completion Criteria
 
-- [ ] `POST /v1/review/run` is always async and returns `run_id`
-- [ ] Worker-based execution persists runs and findings reliably
-- [ ] Idempotency key support prevents duplicate equivalent runs
-- [ ] Chunk artifacts are persisted and findings reference stable `chunk_id`
-- [ ] Spreadsheet ingestion feeds the standard downstream review pipeline
-- [ ] Run-level instrumentation is available for debugging/operations
-- [ ] Retry/failure behavior is explicit and tested
+- [x] `POST /v1/review/run` is always async and returns `run_id`
+- [x] Worker-based execution persists runs and findings reliably
+- [x] Idempotency key support prevents duplicate equivalent runs
+- [x] Chunk artifacts are persisted and findings reference stable `chunk_id`
+- [x] Spreadsheet ingestion feeds the standard downstream review pipeline
+- [x] Run-level instrumentation is available for debugging/operations
+- [x] Retry/failure behavior is explicit and tested
 
 ---
 
@@ -132,4 +132,4 @@ By the end of Phase 2, the system can:
 
 ---
 
-*Last updated: February 21, 2026*
+*Last updated: February 22, 2026*

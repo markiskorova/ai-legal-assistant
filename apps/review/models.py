@@ -12,6 +12,14 @@ class ReviewRunStatus(models.TextChoices):
     PARTIAL = "partial", "Partial"
 
 
+class ReviewRunStage(models.TextChoices):
+    PREPROCESS = "preprocess", "Preprocess"
+    EXTRACT = "extract", "Extract"
+    RULES = "rules", "Rules"
+    LLM = "llm", "LLM"
+    PERSIST = "persist", "Persist"
+
+
 class FindingSeverity(models.TextChoices):
     LOW = "low", "Low"
     MEDIUM = "medium", "Medium"
@@ -39,6 +47,17 @@ class ReviewRun(models.Model):
     llm_model = models.CharField(max_length=50, null=True, blank=True)
     prompt_rev = models.CharField(max_length=200, null=True, blank=True)
     error = models.TextField(null=True, blank=True)
+    request_fingerprint = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    cache_key = models.CharField(max_length=255, null=True, blank=True)
+    cache_hits = models.PositiveIntegerField(default=0)
+    cache_misses = models.PositiveIntegerField(default=0)
+    token_usage = models.JSONField(default=dict, blank=True)
+    stage_timings = models.JSONField(default=dict, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    current_stage = models.CharField(
+        max_length=20, choices=ReviewRunStage.choices, null=True, blank=True
+    )
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -70,6 +89,7 @@ class Finding(models.Model):
 
     # Clause identity from the extractor step (UUID string)
     clause_id = models.CharField(max_length=255, null=True, blank=True)
+    chunk_id = models.CharField(max_length=255, null=True, blank=True)
     
     clause_heading = models.CharField(max_length=255, null=True, blank=True)
     clause_body = models.TextField(null=True, blank=True)
@@ -90,3 +110,30 @@ class Finding(models.Model):
     prompt_rev = models.CharField(max_length=200, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ReviewChunk(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    run = models.ForeignKey(ReviewRun, on_delete=models.CASCADE, related_name="chunks")
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="review_chunks")
+    chunk_id = models.CharField(max_length=255)
+    schema_version = models.CharField(max_length=32, default="v1")
+    ordinal = models.PositiveIntegerField()
+    heading = models.CharField(max_length=255, null=True, blank=True)
+    body = models.TextField()
+    start_offset = models.IntegerField(null=True, blank=True)
+    end_offset = models.IntegerField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["run", "chunk_id"],
+                name="uniq_reviewchunk_run_chunk_id",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["run", "ordinal"], name="reviewchunk_run_ordinal_idx"),
+            models.Index(fields=["document", "chunk_id"], name="reviewchunk_doc_chunk_idx"),
+        ]

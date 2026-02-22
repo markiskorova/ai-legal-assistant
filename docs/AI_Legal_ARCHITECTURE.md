@@ -1,21 +1,22 @@
-﻿# âš–ï¸ AI Legal Assistant â€” ARCHITECTURE.md (v5)
+# AI Legal Assistant - ARCHITECTURE.md (v6)
 
-This document is the **canonical architecture** for the **AI Legal Assistant** project.
+This document is the canonical architecture for the AI Legal Assistant project.
 
 It describes:
-- the **current MVP scope** (document-level analysis),
-- the **internal module boundaries** (Django bounded-context apps),
-- the **data contracts** for findings + provenance,
-- and the **planned phase extensions** (pgvector expansion, Elasticsearch search/indexing, Celery orchestration, Kubernetes deployment, etc.).
+- the current implemented scope (MVP + Phase 2),
+- the module boundaries in Django apps,
+- the core data contracts for runs, chunks, and findings,
+- and the planned Phase 3+ extensions.
 
-> **Status note (important):** MVP Step 7 is complete.  
-> Findings are persisted and retrievable via `GET /v1/documents/{id}/findings`, with strict JSON schema enforcement and evidence spans.
+> Status note: MVP and Phase 2 are complete.
+> `POST /v1/review/run` is async (enqueue + `run_id`) with persisted run status, chunk artifacts, idempotency, and run instrumentation.
 
-**Related docs**
-- `README.md` (project overview)
-- `docs/MVP_Checklist.md` (MVP build scope)
-- `docs/POST_MVP_PLAN.md` (Post-MVP plan)
-- `docs/AI_Legal_Assistant_Article_2025_10_29.md` (design rationale)
+Related docs:
+- `README.md`
+- `docs/MVP_Checklist.md`
+- `docs/PHASE_2_Checklist.md`
+- `docs/POST_MVP_PLAN.md`
+- `docs/AI_Legal_Assistant_Article_2025_10_29.md`
 
 ---
 
@@ -23,133 +24,122 @@ It describes:
 
 ### 1.1 Goal
 
-Provide a modular architecture for **document-level legal analysis** that combines:
-
-- **Deterministic, explainable rules** (baseline contract checks)
-- **LLM-based analysis** (structured outputs with provenance + evidence)
-- A clear path to **persistence, semantic retrieval, and search** without rewriting the core
+Provide a modular architecture for document-level legal analysis that combines:
+- deterministic, explainable checks,
+- schema-constrained LLM analysis,
+- auditable persistence and retrieval,
+- and a clear path to search/indexing and multi-document reasoning.
 
 ### 1.2 Core principles
 
-- **Explainable outputs:** Every finding includes evidence and a source (`rule` vs `llm`).
-- **Auditable runs:** Each run records model/prompt metadata; findings are persisted and retrievable.
-- **Modular apps:** Django apps are organized as bounded contexts under `apps/`.
-- **Incremental sophistication:** Rules first â†’ structured LLM analysis â†’ persistence (Postgres) â†’ semantic layer (pgvector) â†’ search/indexing (Elasticsearch) â†’ multi-document reasoning (cases/strategy).
+- Explainable outputs: each finding links to evidence and source (`rule` or `llm`).
+- Auditable runs: each run stores lifecycle, metadata, and persisted outputs.
+- Modular boundaries: Django apps grouped by bounded context under `apps/`.
+- Incremental complexity: ingestion and review first, then search and corpus-level features.
 
-### 1.3 Non-goals (MVP)
+### 1.3 Non-goals (current)
 
-- End-to-end â€œlegal adviceâ€
-- Fully automated negotiation / autonomous agents
-- Full case management UI
-- Large-scale multi-tenant SaaS hardening (RBAC, billing, enterprise audit logs)
+- Autonomous legal agents.
+- End-to-end legal advice.
+- Full enterprise SaaS hardening (RBAC, billing, compliance workflows).
 
 ---
 
-## 2. Scope: Current MVP vs Planned Phases
+## 2. Scope: Current Baseline vs Planned Phases
 
-### 2.1 MVP (current focus)
+### 2.1 Current baseline (MVP + Phase 2)
 
-**Document-level only**
+Document-level analysis with async processing:
+- `apps/documents`: upload + ingestion (`.txt`, `.pdf`, `.csv`, `.xlsx`).
+- `apps/review`: enqueue path, worker pipeline, status, chunk artifacts, findings persistence/retrieval.
+- `apps/accounts`: optional auth boundary.
 
-- `apps/documents`: ingestion and storage (PDF/text â†’ extracted text)
-- `apps/review`: clause extraction, rule engine, LLM analysis, response DTOs
-- `apps/accounts`: optional auth boundary (SimpleJWT; can be minimal for demo)
+Current flow:
 
-**MVP flow (current):**
-
+```text
+Upload document
+  -> normalized text + ingestion metadata
+  -> POST /v1/review/run (enqueue, return run_id)
+  -> worker: preprocess chunks -> rules -> llm -> persist
+  -> GET /v1/review-runs/{id} and GET /v1/documents/{id}/findings
 ```
-Document (text)
-  â†’ Clause Extraction
-  â†’ Rule Engine + LLM Analysis
-  â†’ Findings (structured JSON response)
-```
 
-### 2.2 MVP Step 7 (completed)
+### 2.2 Completed milestones
 
-**Step 7 - Findings persistence + retrieval**
+- MVP Step 7:
+  - persisted `review_runs` + `findings`,
+  - findings retrieval endpoint by document (optionally by run).
+- Phase 2:
+  - async execution (Celery + Redis),
+  - idempotency key behavior and retry-safe persistence,
+  - persisted `review_chunks` with stable `chunk_id`,
+  - spreadsheet ingestion into canonical metadata and chunk windows,
+  - run-level instrumentation (`token_usage`, `stage_timings`, cache metrics),
+  - concurrency and request rate controls.
 
-- Persist findings as the **system-of-record** (Postgres)
-- Persist `review_runs` and link findings to runs for auditability
-- Add retrieval endpoint: `GET /v1/documents/{id}/findings`
-- Keep pgvector integration as a post-MVP extension
+### 2.3 Planned scope (Phase 3+)
 
-### 2.3 Phase extensions (documented here; not MVP)
-
-Planned bounded contexts (may be implemented as new apps or services):
-
-- `apps/jobs`: async orchestration (Celery/Redis), idempotency, retries
-- `apps/search`: Elasticsearch indexing + search endpoints (filters/facets/highlights)
-- `apps/cases`: multi-document aggregation and issue grouping
-- `apps/strategy`: recommendation and next-action generation
-- `apps/explain`: deeper provenance, traceability, and inspection views
-- `apps/metrics`: cost/latency metrics + evaluation harness
+- `apps/search`: Elasticsearch indexing and search APIs.
+- `apps/cases`: multi-document family/grouping workflows.
+- `apps/strategy`: recommendation and next-action generation.
+- `apps/explain`: richer trace/provenance inspection surfaces.
+- `apps/metrics`: dashboards, corpus eval, and drift tooling.
 
 ---
 
 ## 3. Repository Structure
 
-**Source-of-truth convention:** Django apps live under `/apps`. The `/backend` package contains project wiring only.
+Source of truth convention: Django apps live under `/apps`; `/backend` is project wiring.
 
-```
+```text
 ai-legal-assistant/
 |-- apps/
-|   |-- accounts/        # Auth (JWT / SimpleJWT)
-|   |-- documents/       # Document ingestion + storage
-|   `-- review/          # Clause extraction + rules + LLM analysis (+ DTOs)
-|-- backend/             # Django project wiring (settings/urls/asgi/wsgi)
-|-- frontend/            # React + TypeScript demo UI (Vite)
-|-- docs/                # Architecture, MVP checklist, rationale, roadmap
-|-- infra/               # (phase) Terraform / Kubernetes manifests, etc.
-`-- scripts/             # (optional) fixtures, benchmarks, index rebuild, etc.
+|   |-- accounts/
+|   |-- documents/
+|   `-- review/
+|-- backend/
+|-- frontend/
+|-- docs/
+|-- docker/
+|-- docker-compose.yml
+`-- manage.py
 ```
 
 ---
 
 ## 4. Component Model
 
-### 4.1 Runtime components (MVP)
+### 4.1 Runtime components (implemented)
 
-- **API layer (DRF)**
-  - endpoints for upload + review run + findings retrieval
-  - request validation and auth boundary (optional for demo)
+- API layer (DRF):
+  - upload endpoint,
+  - async run enqueue endpoint,
+  - run status endpoint,
+  - findings retrieval endpoint.
+- Document ingestion:
+  - PDF/text extraction,
+  - spreadsheet parsing and canonical metadata.
+- Preprocessing/chunking:
+  - deterministic chunk generation with stable `chunk_id`,
+  - per-run persisted chunk artifacts (`review_chunks`).
+- Rule engine:
+  - deterministic checks over extracted chunks.
+- LLM analysis:
+  - schema-validated JSON findings with provenance fields.
+- Async orchestration:
+  - Celery task execution,
+  - lifecycle tracking,
+  - retries and partial-failure policy.
+- Runtime controls:
+  - idempotency key semantics,
+  - concurrency and request rate limits,
+  - optional cache for successful pipeline outputs.
 
-- **Document ingestion**
-  - parse upload (PDF/text)
-  - normalize extracted text and metadata
+### 4.2 Planned components (Phase 3+)
 
-- **Clause extraction**
-  - deterministic segmentation into clause candidates
-  - outputs clause DTOs (heading/body, offsets)
-
-- **Rule engine**
-  - deterministic checks per clause (pattern/heuristics)
-  - produces structured findings (`source = rule`)
-
-- **LLM analysis**
-  - prompt templates with explicit output schema
-  - JSON-schema validation (reject/repair invalid outputs)
-  - produces structured findings (`source = llm`) with provenance
-
-### 4.2 Planned components (phase)
-
-- **Semantic layer (pgvector)**
-  - embeddings stored with findings (and/or clauses)
-  - similarity search for â€œfind similar findings/clausesâ€
-
-- **Search index (Elasticsearch)**
-  - derived index (rebuildable from Postgres)
-  - full-text search + facets + highlights
-  - result pointers back to Postgres record IDs
-
-- **Async orchestration (Celery/Redis)**
-  - job state model (queued/running/succeeded/failed)
-  - idempotency keys
-  - retry policy + dead-letter / failure introspection
-
-- **Deployment (Kubernetes)**
-  - API + worker deployments
-  - managed Postgres recommended
-  - optional Elasticsearch stack in-cluster or managed
+- Semantic layer (pgvector).
+- Search index (Elasticsearch) as derived store from Postgres.
+- Production deployment patterns (Kubernetes/Terraform hardening).
 
 ---
 
@@ -157,311 +147,256 @@ ai-legal-assistant/
 
 ### 5.1 Ingest a document
 
-1. Upload document (PDF/text)
-2. Parse/normalize to extracted text
-3. Store document record (and optionally raw upload reference)
+1. Upload document (`.txt`, `.pdf`, `.csv`, `.xlsx`).
+2. Parse and normalize into `Document.text`.
+3. Persist `source_type` and `ingestion_metadata`.
 
-**Outputs**
+Outputs:
 - `document_id`
 - normalized `text`
-- metadata (title, source, created_at)
+- metadata (`source_type`, `ingestion_metadata`, `created_at`)
 
 ### 5.2 Run a review (`POST /v1/review/run`)
 
-1. Load document text
-2. Clause extraction produces ordered clauses (with offsets)
-3. Rule engine runs on clauses
-4. LLM analysis runs on clauses and/or rule outputs
-5. Aggregate findings into a single structured response
+1. Validate request and resolve idempotency behavior.
+2. Apply concurrency/rate guards.
+3. Create queued run record.
+4. Enqueue worker task.
+5. Return run metadata immediately.
 
-**Current behavior:** returns findings in the response payload and persists findings + run metadata.
+Current behavior:
+- `POST /v1/review/run` does not return findings payload.
+- Findings are retrieved after worker completion.
 
-### 5.3 Persist + retrieve findings (implemented)
+### 5.3 Worker processing
 
-**Persist**
-- `review_run` creates a `run` record and writes findings
-- choose an upsert strategy:
-  - â€œreplace findings for documentâ€ (simple) **or**
-  - â€œappend per runâ€ (auditable history)
+1. Transition run to `running`.
+2. Preprocess document into chunks.
+3. Run deterministic rules.
+4. Run LLM stage (if LLM stage fails, retain rule findings and mark `partial`).
+5. Persist chunks and findings for the run.
+6. Finalize run status and instrumentation.
 
-**Retrieve**
-- `GET /v1/documents/{id}/findings` returns:
-  - findings ordered/grouped consistently
-  - provenance fields included (source/model/prompt_rev/confidence)
-  - evidence spans (offsets + excerpt text)
+### 5.4 Retrieve status and findings
 
-### 5.4 Build semantic similarity (pgvector)
-
-- Store `embedding` on each finding (and/or clause)
-- Provide query endpoint (phase) for:
-  - â€œfind similar findingsâ€
-  - â€œfind similar clausesâ€
-
-Guideline: Postgres remains the system of record; vectors are stored with the record.
-
-### 5.5 Build cross-document search (Elasticsearch)
-
-- Create an **index builder** job:
-  - read documents/findings from Postgres
-  - write derived docs to Elasticsearch
-- Search endpoints return:
-  - ES matches + highlights
-  - record IDs for Postgres hydration
-- Rebuild strategy:
-  - full rebuild (simple) or incremental reindex by `updated_at`
-
-Guideline: Elasticsearch is **derived**; loss is recoverable from Postgres.
+- `GET /v1/review-runs/{id}` returns run lifecycle state and metadata.
+- `GET /v1/documents/{id}/findings` returns persisted findings for latest or specified run.
 
 ---
 
 ## 6. Data Model (Canonical)
 
-Below is a minimal canonical model. Implementation can evolve, but **auditability invariants** should not.
-
 ### 6.1 `documents`
 
 - `id` (uuid)
-- `title` (string, nullable)
+- `title` (string)
 - `text` (text)
-- `source` (string, nullable)
+- `source_type` (`text|pdf|spreadsheet`)
+- `ingestion_metadata` (json)
 - `created_at`
 
-### 6.2 `review_runs` (Step 7+)
+### 6.2 `review_runs`
 
 - `id` (uuid)
 - `document_id` (fk)
-- `requested_by` (fk, nullable)
-- `started_at`, `completed_at`
-- `status` (`succeeded|failed|partial`)
-- `model` (string, nullable)
-- `prompt_rev` (string, nullable)
-- `token_usage` (json, nullable)
-- `cost_usd` (numeric, nullable)
+- `idempotency_key` (nullable)
+- `request_fingerprint` (nullable, indexed)
+- `status` (`queued|running|succeeded|failed|partial`)
+- `current_stage` (`preprocess|extract|rules|llm|persist`, nullable)
+- `llm_model` (nullable)
+- `prompt_rev` (nullable)
+- `error` (nullable)
+- `cache_key` (nullable)
+- `cache_hits` (int)
+- `cache_misses` (int)
+- `token_usage` (json)
+- `stage_timings` (json)
+- `started_at` (nullable)
+- `completed_at` (nullable)
+- `created_at`
 
-### 6.3 `findings` (canonical unit)
+Constraint:
+- unique `(document_id, idempotency_key)` when `idempotency_key` is not null.
+
+### 6.3 `findings`
 
 - `id` (uuid)
 - `document_id` (fk)
-- `run_id` (fk, nullable; required if storing per-run)
-- `clause_id` (nullable; if clause table exists)
-- `finding_type` (string)
-- `severity` (`low|medium|high` or numeric score)
+- `run_id` (fk, nullable for backward compatibility)
+- `clause_id` (string, nullable)
+- `chunk_id` (string, nullable)
+- `clause_heading` (nullable)
+- `clause_body` (nullable)
 - `summary` (text)
-- `recommendation` (text, nullable)
-- `source` (`rule|llm`)
-- `evidence` (json) â€” list of spans and excerpts
-- `provenance` (json) â€” model, confidence, prompt_rev, etc.
+- `explanation` (nullable)
+- `severity` (`low|medium|high`)
+- `evidence` (text)
+- `evidence_span` (json, nullable)
+- `source` (`rule|llm|unknown`)
+- `rule_code` (nullable)
+- `model` (nullable)
+- `confidence` (nullable)
+- `prompt_rev` (nullable)
 - `created_at`
 
-### 6.4 `clauses` (optional table)
-
-You can persist clause segmentation to support reproducibility and indexing.
+### 6.4 `review_chunks`
 
 - `id` (uuid)
+- `run_id` (fk)
 - `document_id` (fk)
+- `chunk_id` (string)
+- `schema_version` (string)
 - `ordinal` (int)
-- `heading` (text, nullable)
+- `heading` (nullable)
 - `body` (text)
-- `start_offset`, `end_offset` (int)
+- `start_offset` (nullable)
+- `end_offset` (nullable)
+- `metadata` (json)
+- `created_at`
 
-### 6.5 Embeddings (pgvector, Step 7+)
+Constraints/indexes:
+- unique `(run_id, chunk_id)`
+- index `(run_id, ordinal)`
+- index `(document_id, chunk_id)`
 
-Add to `findings` (initially):
+### 6.5 Embeddings (planned)
 
-- `embedding` (vector) â€” embedding for finding text (or clause text)
-- `embedding_model` (string, nullable)
-- `embedded_at`
+Future extension:
+- vector fields and embedding metadata on findings/chunks.
 
 ---
 
 ## 7. Data Contracts (DTOs)
 
-### 7.1 Document DTO
+### 7.1 Run enqueue response (shape)
+
+```json
+{
+  "document": {"id": "uuid", "title": "string"},
+  "clauses": [],
+  "findings": [],
+  "run": {
+    "id": "uuid",
+    "document_id": "uuid",
+    "status": "queued|running|succeeded|failed|partial"
+  },
+  "idempotency_reused": false
+}
+```
+
+### 7.2 Finding DTO (shape)
 
 ```json
 {
   "id": "uuid",
-  "title": "string",
-  "text": "string",
-  "created_at": "iso8601"
-}
-```
-
-### 7.2 Clause DTO
-
-```json
-{
-  "id": "string",
-  "ordinal": 0,
-  "heading": "string",
-  "text": "string",
-  "start": 0,
-  "end": 0
-}
-```
-
-### 7.3 Finding DTO (canonical)
-
-```json
-{
-  "id": "uuid",
-  "finding_type": "string",
-  "severity": "low|medium|high",
-  "source": "rule|llm",
+  "run_id": "uuid",
+  "clause_id": "string",
+  "chunk_id": "string",
   "summary": "string",
-  "recommendation": "string",
-  "evidence": [
-    {
-      "start": 123,
-      "end": 456,
-      "text": "excerpt..."
-    }
-  ],
-  "provenance": {
-    "model": "gpt-4o",
-    "prompt_rev": "rev_2026_01_09",
-    "confidence": 0.72
-  }
+  "explanation": "string",
+  "severity": "low|medium|high",
+  "evidence": "string",
+  "evidence_span": {"start": 12, "end": 42},
+  "source": "rule|llm|unknown",
+  "rule_code": "string",
+  "model": "string",
+  "prompt_rev": "string",
+  "confidence": 0.72
 }
 ```
 
-**Invariant:** Findings must be explainable via evidence spans and must indicate whether they came from a rule or an LLM.
+Invariant:
+- findings must include explainable evidence and source provenance.
 
 ---
 
 ## 8. API Surface
 
-### 8.1 MVP endpoints
+### 8.1 Implemented endpoints
 
+- `GET /`
 - `POST /v1/documents/upload`
 - `POST /v1/review/run`
+- `GET /v1/review-runs/{id}`
 - `GET /v1/documents/{id}/findings`
 
-### 8.2 Phase endpoints (planned)
+### 8.2 Planned endpoints (Phase 3+)
 
-- Search:
-  - `GET /v1/search?query=...&severity=...&type=...`
-- Jobs:
-  - `POST /v1/review/run` (async enqueue mode in Phase 2)
-  - `GET /v1/review-runs/{id}` (status)
-- Cases/Strategy/Explain:
-  - `/v1/cases/*`
-  - `/v1/strategy/*`
-  - `/v1/explain/*`
+- `GET /v1/search/*`
+- `POST /v1/contracts/*`
+- `GET /v1/strategy/*`
+- `GET /v1/explain/*`
 
 ---
 
-## 9. Security, Privacy, and Guardrails
+## 9. Security and Guardrails
 
-### 9.1 Auth boundary
-
-- Use JWT (SimpleJWT) for authenticated endpoints when needed.
-- MVP can allow a â€œdemo modeâ€ boundary where auth is optional, but keep auth pluggable.
-
-### 9.2 Data handling
-
-- Treat uploaded documents as sensitive.
-- Ensure:
-  - request logging avoids raw document text
-  - redaction hooks can be added (phase) before sending text to the LLM
-  - retention policy can be implemented (phase)
-
-### 9.3 LLM safety and determinism
-
-- Enforce strict JSON output via schema validation.
-- Prefer:
-  - deterministic rule checks for crisp constraints
-  - LLM outputs for interpretation, summarization, and redline suggestions
-- Record provenance so outputs can be audited and reproduced.
+- JWT boundary can be enabled via `apps/accounts` (SimpleJWT).
+- Treat uploaded documents as sensitive data.
+- Keep schema-constrained LLM output validation in place.
+- Preserve provenance fields for auditability.
 
 ---
 
-## 10. Deployment & Infrastructure
+## 10. Deployment and Infrastructure
 
-### 10.1 Local development
+### 10.1 Local
 
-- SQLite can be used for quick local dev.
-- Postgres is the intended system-of-record for current and future phases.
-- Docker is recommended for consistent environments.
+- SQLite for quick local work.
+- Postgres + Redis recommended for full async workflow.
+- Docker Compose provides API, worker, db, redis, and frontend services.
 
-### 10.2 CI/CD
+### 10.2 CI/CD and production direction
 
-- GitHub Actions for lint/test/build checks.
-- Phase: add image builds and deployment workflows.
-
-### 10.3 Kubernetes (phase)
-
-A typical K8s layout:
-
-- Deployment: `api`
-- (Optional) Deployment: `worker` (Celery)
-- Service: `api`
-- Ingress: `api-ingress`
-- External: managed Postgres (recommended)
-- Optional: `elasticsearch` (+ Kibana) either in-cluster or managed
-
-### 10.4 Terraform/AWS (phase)
-
-- Terraform provisions:
-  - networking, compute, secrets, managed DB (recommended)
-  - optional managed search (or self-hosted ES) depending on constraints
+- CI: lint/test/build checks.
+- Phase 3+: image pipelines, deployment automation, infra provisioning.
 
 ---
 
-## 11. Observability & Evaluation
+## 11. Observability and Evaluation
 
-### 11.1 MVP baseline
+### 11.1 Current baseline
 
-- structured logs to stdout
-- request IDs / correlation IDs where available
-- basic error handling with clear failure surfaces
+- structured logs to stdout,
+- explicit run error/status surfaces,
+- run-level `stage_timings` and `token_usage`,
+- cache hit/miss tracking per run.
 
-### 11.2 Phase extensions
+### 11.2 Planned extensions
 
-- Prometheus metrics:
-  - request latency, error rate
-  - token usage and cost per run
-  - throughput and queue depth (jobs)
-- Grafana dashboards
-- OpenTelemetry tracing (optional)
-- Evaluation harness:
-  - deterministic rules: unit tests + fixture contracts
-  - LLM analysis: golden sets + drift detection
+- Prometheus and Grafana dashboards,
+- OpenTelemetry tracing,
+- regression/eval harness over labeled corpora.
 
 ---
 
 ## 12. Roadmap Extensions
 
-These extensions are designed to be implemented as **additive layers** on top of the MVP.
+### Phase 3
 
-### Phase A â€” Orchestration + indexing
+- Search/indexing (Elasticsearch) and quality loop (eval/debug tooling).
 
-- Async review runs (Celery + Redis) with persistent job state
-- Elasticsearch indexing from Postgres (derived store)
-- Search endpoints with filtering/faceting and highlight snippets
+### Phase 4
 
-### Phase B â€” Contract families + composite versions
+- Contract families and composite "as-of" document views.
 
-- Link base agreements + amendments into â€œfamiliesâ€
-- Produce â€œcompositeâ€ versions (timeline snapshots)
-- Diff summaries with evidence + provenance
+### Phase 5
 
-### Phase C â€” Deviation analysis (â€œburied riskâ€)
+- Deviation analysis across corpus baselines.
 
-- Normalize clause fields (e.g., termination notice, liability cap, governing law)
-- Compare against baseline clause profiles per contract type
-- Flag buried or non-standard risks with explainable evidence
+### Phase 6
+
+- Kubernetes/Terraform ops maturity and runbooks.
 
 ---
 
-## Appendix A â€” Glossary
+## Appendix A - Glossary
 
-- **Finding:** A structured, evidence-linked output (risk, issue, suggestion).
-- **Provenance:** Metadata about how a finding was generated (model, prompt, confidence, source).
-- **Derived store:** A secondary system (Elasticsearch) that can be rebuilt from the system-of-record.
-- **System-of-record:** Postgres tables that represent canonical truth for documents/findings.
+- Finding: structured, evidence-linked output.
+- Provenance: metadata describing how a finding was produced.
+- Derived store: secondary system rebuildable from Postgres.
+- System of record: canonical persisted state in Postgres.
 
 ---
 
-*Last updated: February 21, 2026*
-
+*Last updated: February 22, 2026*

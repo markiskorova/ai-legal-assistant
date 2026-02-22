@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import List, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 from django.conf import settings
 from openai import OpenAI
@@ -57,7 +57,7 @@ def _mock_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
     return findings
 
 
-def call_llm_for_clauses(clauses: List[Dict]) -> Tuple[List[Dict], str]:
+def call_llm_for_clauses(clauses: List[Dict]) -> Tuple[List[Dict], str, Dict[str, Any]]:
     """
     Calls the LLM once with all clauses and returns (raw_findings, model_name).
 
@@ -80,20 +80,32 @@ def call_llm_for_clauses(clauses: List[Dict]) -> Tuple[List[Dict], str]:
     # 1) Quick mock check
     if provider == "mock":
         validated = validate_llm_response({"findings": _mock_findings_for_clauses(clauses)})
-        return validated["findings"], "mock"
+        return validated["findings"], "mock", {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
     model = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
 
     # Always return a tuple (findings, model)
     if not clauses:
-        return [], model
+        return [], model, {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
     api_key = getattr(settings, "OPENAI_API_KEY", None)
 
     # Optional: if no key, silently fall back to mock so you can keep working.
     if not api_key:
         validated = validate_llm_response({"findings": _mock_findings_for_clauses(clauses)})
-        return validated["findings"], "mock"
+        return validated["findings"], "mock", {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
     client = OpenAI(api_key=api_key)
 
@@ -129,8 +141,14 @@ def call_llm_for_clauses(clauses: List[Dict]) -> Tuple[List[Dict], str]:
 
     validated = validate_llm_response(raw)
     findings_raw = validated["findings"]
+    usage = getattr(response, "usage", None)
+    usage_dict = {
+        "prompt_tokens": getattr(usage, "prompt_tokens", None),
+        "completion_tokens": getattr(usage, "completion_tokens", None),
+        "total_tokens": getattr(usage, "total_tokens", None),
+    }
 
-    return findings_raw, model
+    return findings_raw, model, usage_dict
 
 
 def _is_span_in_clause_body(span: Dict[str, int], body: str) -> bool:
@@ -145,13 +163,15 @@ def _is_span_in_clause_body(span: Dict[str, int], body: str) -> bool:
     return end <= len(body)
 
 
-def generate_llm_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
+def generate_llm_findings_with_usage_for_clauses(
+    clauses: List[Dict],
+) -> Tuple[List[Dict], str, Dict[str, Any]]:
     """
     Public function:
     - Calls the LLM (or mock)
     - Normalizes the raw JSON into internal finding dicts
     """
-    raw_findings, model = call_llm_for_clauses(clauses)
+    raw_findings, model, usage = call_llm_for_clauses(clauses)
 
     by_clause_id = {c["id"]: c for c in clauses}
 
@@ -195,4 +215,9 @@ def generate_llm_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
             }
         )
 
+    return normalized, model, usage
+
+
+def generate_llm_findings_for_clauses(clauses: List[Dict]) -> List[Dict]:
+    normalized, _, _ = generate_llm_findings_with_usage_for_clauses(clauses)
     return normalized

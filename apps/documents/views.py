@@ -4,7 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .ingestion.pdf_reader import extract_pdf_text
-from .models import Document
+from .ingestion.spreadsheet_reader import parse_csv_bytes, parse_xlsx_bytes
+from .models import Document, DocumentSourceType
 from .serializers import DocumentSerializer, DocumentUploadSerializer
 
 from apps.review.models import Finding, ReviewRun
@@ -18,14 +19,29 @@ class DocumentUploadView(APIView):
 
         file = serializer.validated_data["file"]
         title = serializer.validated_data["title"]
+        filename = file.name.lower()
+        metadata = {}
 
         # Extract text depending on file type
-        if file.name.lower().endswith(".pdf"):
+        if filename.endswith(".pdf"):
             text = extract_pdf_text(file)
+            source_type = DocumentSourceType.PDF
+        elif filename.endswith(".csv"):
+            text, metadata = parse_csv_bytes(file.read())
+            source_type = DocumentSourceType.SPREADSHEET
+        elif filename.endswith(".xlsx"):
+            text, metadata = parse_xlsx_bytes(file.read())
+            source_type = DocumentSourceType.SPREADSHEET
         else:
             text = file.read().decode("utf-8", errors="ignore")
+            source_type = DocumentSourceType.TEXT
 
-        doc = Document.objects.create(title=title, text=text)
+        doc = Document.objects.create(
+            title=title,
+            text=text,
+            source_type=source_type,
+            ingestion_metadata=metadata,
+        )
 
         return Response(DocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
 
