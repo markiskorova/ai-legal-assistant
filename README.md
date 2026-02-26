@@ -2,7 +2,7 @@
 
 AI Legal Assistant is a modular Django + React project for document-level legal analysis with explainable findings.
 
-## Current Capabilities (Phase 2 Complete)
+## Current Capabilities (Phase 2 + Phase 1.5 Complete)
 
 The project currently supports:
 - Uploading legal documents (`.txt`, `.pdf`, `.csv`, `.xlsx`)
@@ -14,7 +14,9 @@ The project currently supports:
 - Persisted chunk artifacts with stable `chunk_id` provenance
 - Run-level instrumentation (`token_usage`, `stage_timings`, cache hit/miss fields)
 - Persisting review runs and findings
-- Retrieving findings by document (optionally by run)
+- Retrieving findings by document (optionally by run), with pagination/sorting
+- Optional finding recommendations and persisted embeddings
+- pgvector bootstrap support for Postgres deployments
 - A minimal React + TypeScript UI for upload, run, and findings review
 
 ## Tech Stack
@@ -25,6 +27,7 @@ The project currently supports:
 - Database:
   - SQLite for local dev by default
   - PostgreSQL 16 in Docker Compose
+  - pgvector bootstrap migration for Postgres (`vector` extension + vector index/column)
 - Frontend: React 18 + TypeScript + Vite
 - Container orchestration: Docker Compose
 - Async jobs: Celery + Redis
@@ -55,6 +58,7 @@ ai-legal-assistant/
 - `GET /v1/review-runs/{id}` - retrieve run status/progress for a review run
 - `GET /v1/documents/{id}/findings` - retrieve findings for latest run
 - `GET /v1/documents/{id}/findings?run_id=<uuid>` - retrieve findings for a specific run
+- `GET /v1/documents/{id}/findings?page=1&page_size=50&ordering=-created_at` - paginated/sorted retrieval
 
 ## Async Run Semantics
 
@@ -66,6 +70,10 @@ ai-legal-assistant/
   - `503 Service Unavailable`: enqueue failed
 - Run status values:
   - `queued`, `running`, `succeeded`, `failed`, `partial`
+- Findings retrieval query params:
+  - `run_id=<uuid>` (optional)
+  - `page=<int>` and `page_size=<int>` (optional)
+  - `ordering=<field>` where field is one of `created_at`, `severity`, `source`, `confidence` (prefix with `-` for descending)
 - Partial-result policy:
   - If deterministic stages succeed but LLM stage fails/timeouts, run is marked `partial`.
   - Rule findings are still persisted and retrievable for that run.
@@ -123,14 +131,20 @@ Use `.env` (or copy from `.env.example`) for configuration:
 - `LLM_PROVIDER` (`mock` or `openai`)
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+- `OPENAI_EMBEDDING_MODEL`
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
 - `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`
 - `REVIEW_MAX_CONCURRENT_RUNS`, `REVIEW_RATE_LIMIT_PER_MINUTE`
 - `REVIEW_ENABLE_PIPELINE_CACHE`, `REVIEW_CACHE_TTL_SECONDS`
+- `REVIEW_ENABLE_EMBEDDINGS`, `REVIEW_EMBEDDING_PROVIDER`, `REVIEW_EMBEDDING_DIM`
+- `REVIEW_FINDINGS_DEFAULT_PAGE_SIZE`, `REVIEW_FINDINGS_MAX_PAGE_SIZE`
 
 Note:
 - If `LLM_PROVIDER=mock`, analysis runs without external API calls.
 - If `LLM_PROVIDER=openai` and no API key is set, the code falls back to mock findings.
+- Default embedding provider is `mock`; set `REVIEW_EMBEDDING_PROVIDER=openai` to use OpenAI embeddings.
+- For existing findings, run embedding backfill:
+  - `python manage.py backfill_finding_embeddings --batch-size 100`
 
 ## Validation Commands
 

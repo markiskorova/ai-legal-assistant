@@ -1,5 +1,7 @@
 # AI Legal Assistant - Phase 2 Checklist
 
+**Status:** Completed and re-verified against code/tests on February 26, 2026.
+
 ## Purpose of Phase 2
 
 Phase 2 moves the review pipeline to an always-async execution model and hardens ingestion/provenance so longer-running analysis is reliable, traceable, and production-lean.
@@ -69,7 +71,7 @@ By the end of Phase 2, the system can:
 ### Step 5 - Status and progress API (PR-2.5)
 
 - [x] Extend `GET /v1/review-runs/{id}` for lifecycle status/timestamps
-- [x] Add optional stage progress markers (extract/rules/llm/persist)
+- [x] Add optional stage progress markers (preprocess/extract/rules/llm/persist)
 - [x] Standardize status/error response contract
 
 ---
@@ -132,4 +134,4 @@ By the end of Phase 2, the system can:
 
 ---
 
-*Last updated: February 22, 2026*
+*Last updated: February 26, 2026*

@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 from apps.documents.models import Document
 from apps.review.models import Finding, ReviewChunk, ReviewRun
 from apps.review.llm.schema import LLMValidationError, validate_llm_response
-from apps.review.services import create_queued_review_run, process_review_run
+from apps.review.services import create_queued_review_run, persist_findings_for_run, process_review_run
 
 
 class LLMResponseSchemaTests(TestCase):
@@ -121,6 +121,7 @@ class AsyncReviewRunEagerExecutionTests(TestCase):
         for finding in persisted:
             self.assertIn("evidence_span", finding)
             self.assertIn("chunk_id", finding)
+            self.assertIn("recommendation", finding)
             self.assertTrue(finding["chunk_id"])
             span = finding["evidence_span"]
             self.assertIsInstance(span, dict)
@@ -246,6 +247,40 @@ class WorkerRetrySafetyTests(TestCase):
         second_chunk_ids = list(ReviewChunk.objects.filter(run=run).order_by("ordinal").values_list("chunk_id", flat=True))
         self.assertEqual(second_count, first_count)
         self.assertEqual(second_chunk_ids, first_chunk_ids)
+
+
+@override_settings(REVIEW_ENABLE_EMBEDDINGS=True, REVIEW_EMBEDDING_PROVIDER="mock", REVIEW_EMBEDDING_DIM=32)
+class RecommendationPersistenceTests(TestCase):
+    def test_recommendation_and_embedding_are_persisted(self):
+        document = Document.objects.create(
+            title="Recommendation Contract",
+            text="Termination clause body",
+        )
+        run = create_queued_review_run(document)
+
+        clauses = [{"id": "chk_1", "heading": "Termination", "body": "Termination clause body"}]
+        findings = [
+            {
+                "clause_id": "chk_1",
+                "summary": "Termination notice is short.",
+                "explanation": "The clause may expose risk.",
+                "recommendation": "Increase termination notice to 30 days.",
+                "severity": "medium",
+                "evidence_text": "Termination clause body",
+                "evidence_span": {"start": 0, "end": 10},
+                "source": "llm",
+                "model": "mock",
+                "confidence": 0.7,
+                "prompt_rev": "test",
+            }
+        ]
+
+        persist_findings_for_run(run, clauses, findings)
+        finding = Finding.objects.get(run=run)
+
+        self.assertEqual(finding.recommendation, "Increase termination notice to 30 days.")
+        self.assertIsInstance(finding.embedding, list)
+        self.assertEqual(len(finding.embedding), 32)
 
 
 @override_settings(LLM_PROVIDER="mock", CELERY_TASK_ALWAYS_EAGER=True)

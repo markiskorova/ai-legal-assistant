@@ -56,6 +56,7 @@ class FindingSerializer(serializers.ModelSerializer):
             "clause_body",
             "summary",
             "explanation",
+            "recommendation",
             "severity",
             "evidence",
             "evidence_span",

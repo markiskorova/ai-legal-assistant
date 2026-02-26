@@ -1,10 +1,10 @@
-# AI Legal Assistant — MVP Checklist
+# AI Legal Assistant - MVP Checklist
 
 ## Purpose of the MVP
 
-The **AI Legal Assistant MVP** demonstrates how large language models can *augment* legal reasoning in a transparent, auditable way.
+The AI Legal Assistant MVP demonstrates how large language models can augment legal reasoning in a transparent, auditable way.
 
-The MVP focuses on **document-level legal analysis**, not full case management. Its goal is to show:
+The MVP focuses on document-level legal analysis, not full case management. Its goal is to show:
 
 - How legal documents can be ingested and parsed
 - How clauses can be extracted and classified
@@ -36,7 +36,7 @@ By the end of the MVP, the system can:
 
 ## MVP Build Checklist
 
-### Step 1 — Scaffold Django Project + Core Apps
+### Step 1 - Scaffold Django Project + Core Apps
 
 - [x] Create Django project
 - [x] Add core apps (`accounts`, `documents`, `review`)
@@ -45,16 +45,16 @@ By the end of the MVP, the system can:
 
 ---
 
-### Step 2 — Document Input & Storage
+### Step 2 - Document Input and Storage
 
 - [x] Create `Document` model
-- [x] Implement document upload / ingestion
+- [x] Implement document upload and ingestion
 - [x] Support PDF and raw text
 - [x] Store text in database
 
 ---
 
-### Step 3 — Clause Extraction
+### Step 3 - Clause Extraction
 
 - [x] Implement clause extraction logic
 - [x] Heading-based extraction
@@ -63,7 +63,7 @@ By the end of the MVP, the system can:
 
 ---
 
-### Step 4 — Deterministic Rule Engine
+### Step 4 - Deterministic Rule Engine
 
 - [x] Implement rule engine
 - [x] Termination notice checks
@@ -73,7 +73,7 @@ By the end of the MVP, the system can:
 
 ---
 
-### Step 5 — LLM Integration
+### Step 5 - LLM Integration
 
 - [x] Integrate OpenAI client
 - [x] Versioned prompts
@@ -84,17 +84,17 @@ By the end of the MVP, the system can:
 
 ---
 
-### Step 6 — `/v1/review/run` Endpoint
+### Step 6 - `/v1/review/run` Endpoint
 
 - [x] Unified review pipeline
-- [x] Clause → rules → LLM orchestration
+- [x] Clause -> rules -> LLM orchestration
 - [x] `POST /v1/review/run`
 - [x] Structured JSON response
 - [x] Refactored services
 
 ---
 
-### Step 7 — `/v1/documents/{id}/findings` Endpoint
+### Step 7 - `/v1/documents/{id}/findings` Endpoint
 
 - [x] Choose persistence strategy (ReviewRun groups findings per analysis run)
 - [x] Persist findings during `/v1/review/run`
@@ -104,7 +104,7 @@ By the end of the MVP, the system can:
 
 ---
 
-### Step 8 — Minimal Frontend (Optional)
+### Step 8 - Minimal Frontend (Optional)
 
 - [x] Upload UI
 - [x] Run analysis
@@ -124,21 +124,23 @@ By the end of the MVP, the system can:
 
 ---
 
-## Out of Scope (Post-MVP)
+## Delivered Post-MVP (Now Completed)
 
-- Case aggregation
-- Strategy suggestions
-- Async orchestration (always-async review runs, status polling, idempotency)
-- Layout-aware preprocessing with persisted chunk artifacts and chunk-level finding references
-- Spreadsheet ingestion (`.xlsx` / `.csv`) with canonical row windows and evidence pointers
+- [x] Async orchestration (always-async review runs, status polling, idempotency)
+- [x] Layout-aware preprocessing with persisted chunk artifacts and chunk-level finding references
+- [x] Spreadsheet ingestion (`.xlsx` / `.csv`) with canonical row windows and evidence pointers
+- [x] Cost/latency instrumentation + caching (token counts, stage timings, cache hits/misses)
+
+---
+
+## Out of Scope (Phase 3+)
+
 - Eval harness + internal debug tooling (failure labeling, output diffs, provenance tracing)
-- Cost/latency instrumentation + caching (token counts, stage timings, cache hits/misses)
 - Observability dashboards
+- Elasticsearch-backed search endpoints and indexing pipeline
 - RBAC
 - Production infra
 
 ---
 
-*Last updated: February 21, 2026*
-
-
+*Last updated: February 26, 2026*

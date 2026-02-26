@@ -10,6 +10,11 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.documents.models import Document
+from apps.review.embeddings import (
+    build_finding_embedding_input,
+    generate_embeddings,
+    sync_pgvector_embeddings,
+)
 from apps.review.llm.prompts import PROMPT_REV
 from apps.review.llm.provider import (
     generate_llm_findings_for_clauses,
@@ -156,6 +161,7 @@ def persist_findings_for_run(
                 clause_body=clause.get("body"),
                 summary=f.get("summary", ""),
                 explanation=f.get("explanation"),
+                recommendation=f.get("recommendation"),
                 severity=f.get("severity") or f.get("risk") or FindingSeverity.MEDIUM,
                 evidence=evidence,
                 evidence_span=f.get("evidence_span"),
@@ -169,8 +175,35 @@ def persist_findings_for_run(
 
     if rows:
         Finding.objects.bulk_create(rows)
+        _store_findings_embeddings(run)
 
     return run
+
+
+def _store_findings_embeddings(run: ReviewRun) -> None:
+    if not settings.REVIEW_ENABLE_EMBEDDINGS:
+        return
+
+    finding_rows = list(
+        Finding.objects.filter(run=run).only("id", "summary", "explanation", "evidence", "embedding")
+    )
+    if not finding_rows:
+        return
+
+    embedding_inputs = [
+        build_finding_embedding_input(
+            summary=f.summary,
+            explanation=f.explanation or "",
+            evidence=f.evidence or "",
+        )
+        for f in finding_rows
+    ]
+    vectors = generate_embeddings(embedding_inputs)
+    for finding, vector in zip(finding_rows, vectors):
+        finding.embedding = vector
+
+    Finding.objects.bulk_update(finding_rows, ["embedding"])
+    sync_pgvector_embeddings(finding_rows)
 
 
 @transaction.atomic

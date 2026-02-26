@@ -6,6 +6,7 @@ from openpyxl import Workbook
 from rest_framework.test import APIClient
 
 from apps.documents.models import Document
+from apps.review.models import Finding, ReviewRun
 
 
 class DocumentAPITests(TestCase):
@@ -81,3 +82,71 @@ class DocumentAPITests(TestCase):
         self.assertEqual(doc.ingestion_metadata.get("kind"), "spreadsheet")
         self.assertIn("Terms", [s["name"] for s in doc.ingestion_metadata.get("sheets", [])])
         self.assertIn("[Sheet: Terms]", doc.text)
+
+    def test_findings_endpoint_supports_pagination(self):
+        doc = Document.objects.create(title="Paged Findings", text="Simple contract body.")
+        run = ReviewRun.objects.create(document=doc, status="succeeded")
+
+        for idx in range(5):
+            Finding.objects.create(
+                document=doc,
+                run=run,
+                clause_id=f"c-{idx}",
+                summary=f"Finding {idx}",
+                severity="medium",
+                evidence=f"Evidence {idx}",
+                source="rule",
+            )
+
+        resp = self.client.get(
+            f"/v1/documents/{doc.id}/findings",
+            {"run_id": str(run.id), "page": 2, "page_size": 2},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data["findings"]), 2)
+        self.assertEqual(resp.data["pagination"]["page"], 2)
+        self.assertEqual(resp.data["pagination"]["page_size"], 2)
+        self.assertEqual(resp.data["pagination"]["total"], 5)
+        self.assertEqual(resp.data["pagination"]["total_pages"], 3)
+        self.assertTrue(resp.data["pagination"]["has_next"])
+        self.assertTrue(resp.data["pagination"]["has_prev"])
+
+    def test_findings_endpoint_supports_ordering(self):
+        doc = Document.objects.create(title="Ordered Findings", text="Simple contract body.")
+        run = ReviewRun.objects.create(document=doc, status="succeeded")
+
+        Finding.objects.create(
+            document=doc,
+            run=run,
+            clause_id="c-1",
+            summary="Finding medium",
+            severity="medium",
+            evidence="Evidence medium",
+            source="rule",
+        )
+        Finding.objects.create(
+            document=doc,
+            run=run,
+            clause_id="c-2",
+            summary="Finding low",
+            severity="low",
+            evidence="Evidence low",
+            source="rule",
+        )
+        Finding.objects.create(
+            document=doc,
+            run=run,
+            clause_id="c-3",
+            summary="Finding high",
+            severity="high",
+            evidence="Evidence high",
+            source="rule",
+        )
+
+        resp = self.client.get(
+            f"/v1/documents/{doc.id}/findings",
+            {"run_id": str(run.id), "ordering": "severity"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        severities = [row["severity"] for row in resp.data["findings"]]
+        self.assertEqual(severities, ["high", "low", "medium"])

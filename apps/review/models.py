@@ -96,11 +96,13 @@ class Finding(models.Model):
 
     summary = models.TextField()
     explanation = models.TextField(null=True, blank=True)
+    recommendation = models.TextField(null=True, blank=True)
 
     # Keep max_length=20 for migration compatibility (was "risk")
     severity = models.CharField(max_length=20, choices=FindingSeverity.choices)
     evidence = models.TextField()
     evidence_span = models.JSONField(null=True, blank=True)
+    embedding = models.JSONField(null=True, blank=True)
     source = models.CharField(max_length=20, choices=FindingSource.choices)
 
     rule_code = models.CharField(max_length=64, null=True, blank=True)

@@ -16,8 +16,8 @@ openpyxl>=3.1,<4.0
 # Postgres driver (required for Docker Compose setup)
 psycopg2-binary>=2.9,<3.0
 
-# Optional: pgvector (uncomment if you add VectorField models/migrations)
-# pgvector>=0.2,<1.0
+# pgvector bootstrap (Phase 1.5)
+pgvector>=0.2,<1.0
 
 # Optional: production server (uncomment for deployment)
 # gunicorn>=21.2,<23.0

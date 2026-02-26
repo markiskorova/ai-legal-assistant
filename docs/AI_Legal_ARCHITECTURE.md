@@ -1,4 +1,4 @@
-# AI Legal Assistant - ARCHITECTURE.md (v6)
+# AI Legal Assistant - ARCHITECTURE
 
 This document is the canonical architecture for the AI Legal Assistant project.
 
@@ -10,6 +10,7 @@ It describes:
 
 > Status note: MVP and Phase 2 are complete.
 > `POST /v1/review/run` is async (enqueue + `run_id`) with persisted run status, chunk artifacts, idempotency, and run instrumentation.
+> Phase 1.5 pgvector bootstrap is implemented for Postgres deployments, with embedding persistence on findings.
 
 Related docs:
 - `README.md`
@@ -69,6 +70,9 @@ Upload document
 - MVP Step 7:
   - persisted `review_runs` + `findings`,
   - findings retrieval endpoint by document (optionally by run).
+- Phase 1.5:
+  - pgvector extension/bootstrap migration for Postgres,
+  - findings embedding persistence and backfill command support.
 - Phase 2:
   - async execution (Celery + Redis),
   - idempotency key behavior and retry-safe persistence,
@@ -76,6 +80,7 @@ Upload document
   - spreadsheet ingestion into canonical metadata and chunk windows,
   - run-level instrumentation (`token_usage`, `stage_timings`, cache metrics),
   - concurrency and request rate controls.
+  - findings retrieval pagination and sorting.
 
 ### 2.3 Planned scope (Phase 3+)
 
@@ -137,7 +142,6 @@ ai-legal-assistant/
 
 ### 4.2 Planned components (Phase 3+)
 
-- Semantic layer (pgvector).
 - Search index (Elasticsearch) as derived store from Postgres.
 - Production deployment patterns (Kubernetes/Terraform hardening).
 
@@ -180,7 +184,7 @@ Current behavior:
 ### 5.4 Retrieve status and findings
 
 - `GET /v1/review-runs/{id}` returns run lifecycle state and metadata.
-- `GET /v1/documents/{id}/findings` returns persisted findings for latest or specified run.
+- `GET /v1/documents/{id}/findings` returns persisted findings for latest or specified run, with pagination/sorting controls.
 
 ---
 
@@ -229,9 +233,11 @@ Constraint:
 - `clause_body` (nullable)
 - `summary` (text)
 - `explanation` (nullable)
+- `recommendation` (nullable)
 - `severity` (`low|medium|high`)
 - `evidence` (text)
 - `evidence_span` (json, nullable)
+- `embedding` (json, nullable; persisted embedding payload)
 - `source` (`rule|llm|unknown`)
 - `rule_code` (nullable)
 - `model` (nullable)
@@ -259,10 +265,15 @@ Constraints/indexes:
 - index `(run_id, ordinal)`
 - index `(document_id, chunk_id)`
 
-### 6.5 Embeddings (planned)
+### 6.5 Embeddings (implemented baseline + extension point)
 
-Future extension:
-- vector fields and embedding metadata on findings/chunks.
+Current:
+- findings store embeddings in JSON (`findings.embedding`),
+- Postgres deployments run pgvector bootstrap migration,
+- Postgres includes `embedding_vector` column/index for vector similarity operations.
+
+Extension point:
+- additional embedding fields or vector indexes on other entities (for example chunks, deviations).
 
 ---
 
@@ -294,6 +305,7 @@ Future extension:
   "chunk_id": "string",
   "summary": "string",
   "explanation": "string",
+  "recommendation": "string",
   "severity": "low|medium|high",
   "evidence": "string",
   "evidence_span": {"start": 12, "end": 42},
@@ -399,4 +411,4 @@ Invariant:
 
 ---
 
-*Last updated: February 22, 2026*
+*Last updated: February 26, 2026*

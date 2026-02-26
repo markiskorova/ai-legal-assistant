@@ -15,6 +15,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")  # or "gpt-4o"
+OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -167,3 +168,11 @@ REVIEW_MAX_CONCURRENT_RUNS = int(os.getenv("REVIEW_MAX_CONCURRENT_RUNS", "5"))
 REVIEW_RATE_LIMIT_PER_MINUTE = int(os.getenv("REVIEW_RATE_LIMIT_PER_MINUTE", "20"))
 REVIEW_CACHE_TTL_SECONDS = int(os.getenv("REVIEW_CACHE_TTL_SECONDS", "3600"))
 REVIEW_ENABLE_PIPELINE_CACHE = env_bool("REVIEW_ENABLE_PIPELINE_CACHE", default=True)
+REVIEW_ENABLE_EMBEDDINGS = env_bool("REVIEW_ENABLE_EMBEDDINGS", default=True)
+REVIEW_EMBEDDING_PROVIDER = os.getenv(
+    "REVIEW_EMBEDDING_PROVIDER",
+    "mock",
+).lower()
+REVIEW_EMBEDDING_DIM = int(os.getenv("REVIEW_EMBEDDING_DIM", "1536"))
+REVIEW_FINDINGS_DEFAULT_PAGE_SIZE = int(os.getenv("REVIEW_FINDINGS_DEFAULT_PAGE_SIZE", "50"))
+REVIEW_FINDINGS_MAX_PAGE_SIZE = int(os.getenv("REVIEW_FINDINGS_MAX_PAGE_SIZE", "200"))

@@ -1,3 +1,6 @@
+import math
+
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -70,17 +73,73 @@ class DocumentFindingsView(APIView):
                     "document": {"id": str(doc.id), "title": doc.title},
                     "run": None,
                     "findings": [],
+                    "pagination": _pagination_payload(page=1, page_size=_default_page_size(), total=0),
                 },
                 status=status.HTTP_200_OK,
             )
 
-        qs = Finding.objects.filter(document=doc, run=run).order_by("created_at")
+        page = _parse_positive_int(request.query_params.get("page"), default=1)
+        page_size = _parse_positive_int(
+            request.query_params.get("page_size"),
+            default=_default_page_size(),
+        )
+        page_size = min(page_size, _max_page_size())
+        ordering = _safe_ordering(request.query_params.get("ordering"))
+
+        qs = Finding.objects.filter(document=doc, run=run).order_by(ordering, "id")
+        total = qs.count()
+        start = (page - 1) * page_size
+        end = start + page_size
 
         return Response(
             {
                 "document": {"id": str(doc.id), "title": doc.title},
                 "run": ReviewRunSerializer(run).data,
-                "findings": FindingSerializer(qs, many=True).data,
+                "findings": FindingSerializer(qs[start:end], many=True).data,
+                "pagination": _pagination_payload(page=page, page_size=page_size, total=total),
             },
             status=status.HTTP_200_OK,
         )
+
+
+def _safe_ordering(ordering: str | None) -> str:
+    if not ordering:
+        return "created_at"
+    normalized = ordering.strip()
+    if not normalized:
+        return "created_at"
+    base = normalized[1:] if normalized.startswith("-") else normalized
+    allowed_fields = {"created_at", "severity", "source", "confidence"}
+    if base not in allowed_fields:
+        return "created_at"
+    return normalized
+
+
+def _default_page_size() -> int:
+    return max(1, int(getattr(settings, "REVIEW_FINDINGS_DEFAULT_PAGE_SIZE", 50)))
+
+
+def _max_page_size() -> int:
+    return max(1, int(getattr(settings, "REVIEW_FINDINGS_MAX_PAGE_SIZE", 200)))
+
+
+def _parse_positive_int(value: str | None, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def _pagination_payload(page: int, page_size: int, total: int) -> dict:
+    total_pages = math.ceil(total / page_size) if total else 0
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "has_next": total_pages > 0 and page < total_pages,
+        "has_prev": page > 1 and total_pages > 0,
+    }

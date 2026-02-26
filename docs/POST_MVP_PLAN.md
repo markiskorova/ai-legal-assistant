@@ -16,7 +16,7 @@ This document translates the **README** + **Architecture v6** roadmap into an im
 
 ---
 
-## Current baseline (current state: Phase 2 complete)
+## Current baseline (current state: Phase 2 complete, Phase 1.5 complete)
 
 - Document ingestion supports PDF/text/spreadsheets with normalized metadata
 - Deterministic preprocessing persists stable chunk artifacts per run
@@ -24,6 +24,9 @@ This document translates the **README** + **Architecture v6** roadmap into an im
 - `POST /v1/review/run` is async and returns `run_id`
 - `GET /v1/review-runs/{id}` exposes lifecycle, stage progress, and instrumentation
 - Findings are persisted per run and retrievable by document (or by specific run)
+- Findings retrieval supports pagination and sorting
+- Findings include optional `recommendation` and stored embeddings
+- pgvector bootstrap is in place for Postgres deployments (`vector` extension + vector column/index migration)
 
 ---
 
@@ -42,11 +45,13 @@ This document translates the **README** + **Architecture v6** roadmap into an im
 
 ## Phase 1 - MVP (completed): Step 7 (Persistence + Retrieval + Audit Trail)
 
+**Status:** Completed and re-verified against code/tests on February 26, 2026 (including PR-1.5).
+
 ### Objective
 Make "auditability" real: runs and findings are persisted, queryable, and reproducible.
 
 ### Definition of Done
-- `review_runs` persisted with lifecycle fields: `status`, `started_at`, `finished_at`, `model`, `prompt_rev`
+- `review_runs` persisted with lifecycle fields: `status`, `started_at`, `completed_at`, `llm_model`, `prompt_rev`
 - `findings` persisted and linked to `run_id`
 - `GET /v1/documents/{id}/findings` and/or `GET /v1/review-runs/{id}` returns persisted data
 - pgvector enabled and embeddings stored for at least one entity (start with `findings`)
@@ -81,7 +86,7 @@ Make "auditability" real: runs and findings are persisted, queryable, and reprod
 
 ## Phase 2 - Async orchestration + ingestion hardening (Celery + Redis)
 
-**Status:** Completed (February 2026).
+**Status:** Completed (February 2026), re-verified on February 26, 2026.
 
 ### Objective
 Support long-running reviews without blocking requests; add retries/idempotency, clear run status, richer provenance artifacts, and broader ingestion.
@@ -314,4 +319,4 @@ If your goal is "most impressive proof-of-work fastest":
 
 ---
 
-*Last updated: February 22, 2026*
+*Last updated: February 26, 2026*
