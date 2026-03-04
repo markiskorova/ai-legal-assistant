@@ -2,6 +2,12 @@
 
 AI Legal Assistant is a modular Django + React project for document-level legal analysis with explainable findings.
 
+## Summary
+
+AI Legal Assistant demonstrates how AI can support document-level legal review without obscuring how conclusions were reached. Users upload a legal document, start an asynchronous review run, and retrieve structured findings produced by deterministic rule checks plus schema-constrained LLM analysis. Each run persists status, chunk-level provenance, evidence spans, and optional recommendations and embeddings so the review process remains inspectable, retry-safe, and auditable after execution.
+
+For a fuller description of product behavior, see [Project Overview](docs/overview.md). For system design details, see the Software Architecture Document in [docs/architecture.md](docs/architecture.md).
+
 ## Current Capabilities (Phase 2 + Phase 1.5 Complete)
 
 The project currently supports:
@@ -156,10 +162,12 @@ cd frontend; npm run build
 
 ## Project Docs
 
+- `docs/overview.md`
+- `docs/architecture.md`
 - `docs/MVP_Checklist.md`
 - `docs/PHASE_2_Checklist.md`
 - `docs/POST_MVP_PLAN.md`
-- `docs/AI_Legal_ARCHITECTURE.md`
+- `docs/AI_Legal_ARCHITECTURE.md` (legacy pointer)
 - `docs/verification_logs/`
 
 ## License
