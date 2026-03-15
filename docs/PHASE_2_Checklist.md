@@ -126,12 +126,12 @@ By the end of Phase 2, the system can:
 
 ## Out of Scope (Phase 3+)
 
+- Production Kubernetes/Terraform rollout and full observability stack
 - Elasticsearch indexing and search endpoints
 - Eval harness and internal debug tooling
 - Contract family graph and composite generation
 - Deviation analysis across corpus baselines
-- Production Kubernetes/Terraform rollout and full observability stack
 
 ---
 
-*Last updated: February 26, 2026*
+*Last updated: March 14, 2026*

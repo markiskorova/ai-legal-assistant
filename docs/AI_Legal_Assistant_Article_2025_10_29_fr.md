@@ -55,7 +55,7 @@ La pile est volontairement simple et modulaire — conçue pour la clarté, la p
 - **Traitement asynchrone :** Celery + Redis  
 - **Frontend :** Tableau de bord React léger pour la visualisation des dossiers  
 - **Interface LLM :** OpenAI GPT-4o avec validation via schémas JSON et vérification des preuves  
-- **Infrastructure :** Docker + Terraform (AWS ECS, RDS, S3) + GitHub Actions CI/CD  
+- **Infrastructure :** Docker + Terraform (infrastructure AWS avec patterns de deploiement Kubernetes, RDS, S3) + GitHub Actions CI/CD  
 
 Chaque composant est construit comme une application autonome au sein du projet Django, ce qui garantit une évolutivité future et une intégration aisée avec d’autres domaines comme la conformité ou la découverte (e-discovery).
 
@@ -67,12 +67,12 @@ L’objectif n’est pas de remplacer le raisonnement juridique — mais de rend
 
 ## Prochaines étapes
 
-Le projet en est encore à un stade précoce de développement, avec le backend et les modèles de données en cours de finalisation. Les prochains jalons incluent :
+Le projet continue d’évoluer, et les prochains jalons mettent désormais l’accent sur la maturité opérationnelle avant les fonctionnalités corpus plus avancées :
 
-1. Implémenter l’extraction des clauses et la validation basée sur des règles  
-2. Ajouter l’agrégation au niveau du dossier et la détection des problématiques  
-3. Construire l’API d’explicabilité pour exposer les preuves et les scores de confiance  
-4. Développer un tableau de bord d’observabilité pour le suivi des coûts et de la provenance  
+1. Renforcer le déploiement et les opérations avec des patterns Kubernetes/Terraform et l’observabilité  
+2. Ajouter la recherche basée sur Elasticsearch ainsi que l’outillage d’évaluation et de debug  
+3. Ajouter l’agrégation au niveau du dossier et la détection des problématiques  
+4. Construire des surfaces d’explicabilité et de provenance plus riches  
 
 Vous pouvez suivre l’avancement ou explorer le code ici :  
 [GitHub Repository – AI Legal Assistant](https://github.com/markiskorova/ai-legal-assistant)  

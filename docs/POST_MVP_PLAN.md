@@ -36,10 +36,10 @@ This document translates the **README** + **Architecture v6** roadmap into an im
 |---:|---|---|---|
 | 1 | MVP (completed): Step 7 persistence + retrieval + audit trail | Persisted findings + retrieval + run audit trail | Existing MVP steps |
 | 2 | Async orchestration + ingestion hardening (completed) | Async `review/run`; idempotency, chunk artifacts, spreadsheet ingestion, run metrics | Phase 1 |
-| 3 | Search + quality loop | Fast cross-document search + filters/facets + eval/debug tooling | Phase 1-2 (recommended) |
-| 4 | Contract families + composites | Base + amendments graph; effective "as-of" composites | Phase 1-3 |
-| 5 | Deviation analysis ("buried risk") | Compare normalized clauses vs baseline profiles | Phase 4 (preferred) |
-| 6 | Production-ish ops | K8s + Terraform + observability dashboards/runbooks | Any prior phase |
+| 3 | Deployment & operations maturity | K8s + Terraform + observability dashboards/runbooks | Phase 1-2 (recommended) |
+| 4 | Search + quality loop | Fast cross-document search + filters/facets + eval/debug tooling | Phase 1-2 (Phase 3 helpful) |
+| 5 | Contract families + composites | Base + amendments graph; effective "as-of" composites | Phase 1-2 (Phase 4 recommended) |
+| 6 | Deviation analysis ("buried risk") | Compare normalized clauses vs baseline profiles | Phase 4-5 (preferred) |
 
 ---
 
@@ -131,7 +131,36 @@ Support long-running reviews without blocking requests; add retries/idempotency,
 
 ---
 
-## Phase 3 - Search + quality loop (Elasticsearch + eval/debug)
+## Phase 3 - Deployment & Operations maturity (Kubernetes + Terraform + Observability)
+
+### Objective
+Make the project deployable and maintainable as a realistic SaaS backend prototype before deeper corpus features land.
+
+### Definition of Done
+- K8s deployment for API + worker; managed Postgres recommended; optional ES/Redis
+- Terraform provisions core infra (networking, secrets, storage, compute)
+- Prometheus metrics + Grafana dashboards
+- Production runbooks for operation, incident response, and rollback
+
+### PR-sized task slices
+- **PR-3.1: Container hardening**
+  - Multi-stage Dockerfiles (api/worker)
+  - Runtime config via env + secrets pattern
+- **PR-3.2: K8s manifests**
+  - Deployments/services/ingress for API + worker
+  - HPA/autoscaling knobs (basic)
+- **PR-3.3: Terraform base**
+  - VPC, security groups, secrets manager, load balancer
+  - Choose a Kubernetes-based runtime target (for example EKS) and keep it consistent
+- **PR-3.4: Observability**
+  - Metrics: run duration, queue depth, failures, token usage, cost
+  - Dashboards + alert thresholds (lightweight)
+- **PR-3.5: Documentation + runbooks**
+  - "How to deploy" + "How to reindex" + "How to roll back prompts"
+
+---
+
+## Phase 4 - Search + quality loop (Elasticsearch + eval/debug)
 
 ### Objective
 Make the system usable across a corpus and safer to iterate on: fast search plus an internal evaluation/debug workflow.
@@ -146,37 +175,37 @@ Make the system usable across a corpus and safer to iterate on: fast search plus
 - Clear "source-of-truth" rule: Postgres authoritative; ES derived
 
 ### PR-sized task slices
-- **PR-3.1: ES dev setup**
+- **PR-4.1: ES dev setup**
   - Add ES to docker compose (dev only)
   - Add index settings + mapping in repo
-- **PR-3.2: Index model + mapping**
+- **PR-4.2: Index model + mapping**
   - Define canonical ES documents (document, finding)
   - Add versioned index naming strategy (`findings_v1`, etc.)
-- **PR-3.3: Indexer task**
+- **PR-4.3: Indexer task**
   - Implement indexer as Celery task (recommended)
   - Index on "run completed" events
-- **PR-3.4: Backfill + reindex**
+- **PR-4.4: Backfill + reindex**
   - CLI command to backfill ES from Postgres
   - Reindex pipeline for mapping changes
-- **PR-3.5: Search endpoints**
+- **PR-4.5: Search endpoints**
   - `GET /v1/search/findings?...`
   - Basic facets (severity, type, source, date)
   - Highlight snippets (optional)
-- **PR-3.6: Test & validation**
+- **PR-4.6: Test & validation**
   - Contract tests for search filters
   - Smoke tests in compose
-- **PR-3.7: Eval harness**
+- **PR-4.7: Eval harness**
   - Add labeled corpus + expected findings format
   - Runner command to compare outputs across prompt/model revisions
   - Persist evaluation summaries for trend tracking
-- **PR-3.8: Internal debug tooling**
+- **PR-4.8: Internal debug tooling**
   - Failure labeling workflow
   - Structured run-to-run diff view (prompt/model version comparisons)
   - Chunk -> extraction -> finding provenance inspection
 
 ---
 
-## Phase 4 - Contract families + Composite versions
+## Phase 5 - Contract families + Composite versions
 
 ### Objective
 Move from single-document analysis to multi-document structure:
@@ -190,27 +219,27 @@ Move from single-document analysis to multi-document structure:
 - Composite output includes: effective text segments + evidence pointers + change summary
 
 ### PR-sized task slices
-- **PR-4.1: Family graph schema**
+- **PR-5.1: Family graph schema**
   - Tables/models for contracts and relations
   - Store linking evidence + confidence + method (rule/heuristic/llm)
-- **PR-4.2: Heuristic linker (first pass)**
+- **PR-5.2: Heuristic linker (first pass)**
   - Match by title/date/parties/identifiers (lightweight)
   - Provide "unresolved" state
-- **PR-4.3: LLM-assisted linker (optional)**
+- **PR-5.3: LLM-assisted linker (optional)**
   - Second-pass suggestions for uncertain links
   - Persist justification + evidence spans
-- **PR-4.4: Family resolution API**
+- **PR-5.4: Family resolution API**
   - `POST /v1/contracts/{id}/family/resolve`
   - `GET /v1/contracts/{id}/family`
-- **PR-4.5: Composite generator**
+- **PR-5.5: Composite generator**
   - Produce effective "as-of" representation
   - Generate diff summaries with citations
-- **PR-4.6: Index composite artifacts (optional)**
+- **PR-5.6: Index composite artifacts (optional)**
   - Store composite outputs for retrieval/search
 
 ---
 
-## Phase 5 - Deviation analysis ("buried risk") across a corpus
+## Phase 6 - Deviation analysis ("buried risk") across a corpus
 
 ### Objective
 Detect non-obvious risk by comparing clause content and normalized fields against a baseline.
@@ -221,50 +250,21 @@ Detect non-obvious risk by comparing clause content and normalized fields agains
 - Deviation scoring output includes: what deviated, how far, why it matters, and evidence
 
 ### PR-sized task slices
-- **PR-5.1: Normalization schema**
+- **PR-6.1: Normalization schema**
   - Define per-clause-type fields (e.g., governing law, cap, termination triggers)
   - Implement extraction into structured fields (rule first; LLM assist where needed)
-- **PR-5.2: Baselines**
+- **PR-6.2: Baselines**
   - Compute baseline profiles (means/ranges or categorical distributions)
   - Store baseline metadata and scope
-- **PR-5.3: Deviation scoring**
+- **PR-6.3: Deviation scoring**
   - Implement scoring function per field type
   - Generate explainable deviation "cards"
-- **PR-5.4: Analytics endpoints**
+- **PR-6.4: Analytics endpoints**
   - `GET /v1/analytics/deviations?...`
   - Filter by clause type, severity, customer/template
-- **PR-5.5: ES + vector integration**
+- **PR-6.5: ES + vector integration**
   - Index deviations
   - Add "similar deviations" via pgvector (optional)
-
----
-
-## Phase 6 - Deployment & Operations maturity (Kubernetes + Terraform + Observability)
-
-### Objective
-Make the project deployable and maintainable as a realistic SaaS backend prototype.
-
-### Definition of Done
-- K8s deployment for API + worker; managed Postgres recommended; optional ES/Redis
-- Terraform provisions core infra (networking, secrets, storage, compute)
-- Prometheus metrics + Grafana dashboards
-- Production runbooks for operation, incident response, and rollback
-
-### PR-sized task slices
-- **PR-6.1: Container hardening**
-  - Multi-stage Dockerfiles (api/worker)
-  - Runtime config via env + secrets pattern
-- **PR-6.2: K8s manifests**
-  - Deployments/services/ingress for API + worker
-  - HPA/autoscaling knobs (basic)
-- **PR-6.3: Terraform base**
-  - VPC, security groups, secrets manager, load balancer
-  - Choose container runtime target (EKS/ECS) and keep consistent
-- **PR-6.4: Observability**
-  - Metrics: run duration, queue depth, failures, token usage, cost
-  - Dashboards + alert thresholds (lightweight)
-- **PR-6.5: Documentation + runbooks**
-  - "How to deploy" + "How to reindex" + "How to roll back prompts"
 
 ---
 
@@ -276,36 +276,37 @@ These are coarse estimates for a single developer. They assume clean scope bound
 - Phase 1: **2-4 weeks**
 - Phase 2: **2-4 weeks**
 - Phase 3: **3-6 weeks**
-- Phase 4: **4-8 weeks**
+- Phase 4: **3-6 weeks**
 - Phase 5: **4-8 weeks**
-- Phase 6: **3-6 weeks**
+- Phase 6: **4-8 weeks**
 - **Total:** ~ **18-36 weeks** depending on how much of each phase you implement
 
 ### Scenario B - Focused build (~ 25-35 hours/week)
 - Phase 1: **1-2 weeks**
 - Phase 2: **1-2 weeks**
-- Phase 3: **2-3 weeks**
-- Phase 4: **3-5 weeks**
+- Phase 3: **2-4 weeks**
+- Phase 4: **2-3 weeks**
 - Phase 5: **3-5 weeks**
-- Phase 6: **2-4 weeks**
+- Phase 6: **3-5 weeks**
 - **Total:** ~ **12-21 weeks**
 
 ### Notes on timeline risk
-- The largest schedule risk is Phase 4-5 scope creep (families, composites, baselines).
+- The largest schedule risk is now Phase 5-6 scope creep (families, composites, baselines).
+- Phase 3 can create rework if the deployment target or secrets strategy changes midstream.
 - ES indexing is straightforward, but "great search UX" can expand quickly.
-- Evaluation harness work pays off early; it prevents regressions as prompts evolve.
+- Evaluation harness work still pays off early; it prevents regressions as prompts evolve.
 
 ---
 
-## Recommended execution order (practical)
+## Recommended execution order (revised roadmap)
 
-If your goal is "most impressive proof-of-work fastest":
+If your goal is earlier deployment realism while keeping the roadmap internally consistent:
 1. **Phase 1** (make auditability real)
 2. **Phase 2** (async jobs + run status + chunk provenance + spreadsheet ingestion)
-3. **Phase 3** (search + eval/debug loop; demo value increases sharply)
-4. **Phase 6 (partial)** (dashboards and runbooks hardening)
-5. **Phase 4** (families + composites)
-6. **Phase 5** (deviation analysis)
+3. **Phase 3** (deployment hardening, K8s/Terraform baseline, dashboards/runbooks)
+4. **Phase 4** (search + eval/debug loop)
+5. **Phase 5** (families + composites)
+6. **Phase 6** (deviation analysis)
 
 ---
 
@@ -313,10 +314,11 @@ If your goal is "most impressive proof-of-work fastest":
 
 - **Milestone M1:** Persisted findings + run audit trail + retrieval
 - **Milestone M2:** Async runs + job status + retries + chunk artifacts + spreadsheet ingestion + token/timing reporting
-- **Milestone M3:** Search UI-ready API (ES backed) + eval harness + internal debug workflow
-- **Milestone M4:** Contract family graph + "as-of" composite + auditable change summaries
-- **Milestone M5:** Deviation dashboard endpoints (top deviations by clause type)
+- **Milestone M3:** Deployable platform baseline (container hardening, K8s/Terraform skeleton, dashboards/runbooks)
+- **Milestone M4:** Search UI-ready API (ES backed) + eval harness + internal debug workflow
+- **Milestone M5:** Contract family graph + "as-of" composite + auditable change summaries
+- **Milestone M6:** Deviation dashboard endpoints (top deviations by clause type)
 
 ---
 
-*Last updated: February 26, 2026*
+*Last updated: March 14, 2026*

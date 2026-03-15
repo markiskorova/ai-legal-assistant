@@ -135,12 +135,11 @@ By the end of the MVP, the system can:
 
 ## Out of Scope (Phase 3+)
 
+- Production infrastructure, deployment automation, and observability dashboards
 - Eval harness + internal debug tooling (failure labeling, output diffs, provenance tracing)
-- Observability dashboards
 - Elasticsearch-backed search endpoints and indexing pipeline
 - RBAC
-- Production infra
 
 ---
 
-*Last updated: February 26, 2026*
+*Last updated: March 14, 2026*

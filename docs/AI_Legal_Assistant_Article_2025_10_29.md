@@ -51,7 +51,7 @@ The stack is intentionally simple and modular — designed for clarity, portabil
 - **Async Processing:** Celery + Redis  
 - **Frontend:** Lightweight React dashboard for case visualization  
 - **LLM Interface:** OpenAI GPT‑4o with JSON schema validation and evidence checking  
-- **Infrastructure:** Docker + Terraform (AWS ECS, RDS, S3) + GitHub Actions CI/CD
+- **Infrastructure:** Docker + Terraform (AWS infrastructure with Kubernetes deployment patterns, RDS, S3) + GitHub Actions CI/CD
 
 Each component is built as a standalone app within the Django project, ensuring future scalability and easy integration with other domains such as compliance or discovery.
 
@@ -63,12 +63,12 @@ The goal isn’t to replace legal reasoning — it’s to make AI reasoning **vi
 
 ## What’s Next
 
-The project is still early in development, with the backend and data models being finalized. The next milestones include:
+The project is still evolving, and the next milestones now emphasize deployment maturity before deeper corpus features:
 
-1. Implementing clause extraction and rule-based validation  
-2. Adding case-level aggregation and issue detection  
-3. Building the explainability API to expose evidence and confidence scores  
-4. Developing an observability dashboard for cost and provenance tracking  
+1. Hardening deployment and operations with Kubernetes/Terraform patterns and observability  
+2. Adding Elasticsearch-backed search and evaluation/debug tooling  
+3. Adding case-level aggregation and issue detection  
+4. Building richer explainability and provenance surfaces  
 
 You can follow the progress or explore the code here:  
 [GitHub Repository – AI Legal Assistant](https://github.com/markiskorova/ai-legal-assistant)  

@@ -6,7 +6,7 @@ It describes:
 - the current implemented scope (MVP + Phase 2),
 - the module boundaries in Django apps,
 - the core data contracts for runs, chunks, and findings,
-- and the planned Phase 3+ extensions.
+- and the planned Phase 3+ roadmap, starting with deployment and operations maturity.
 
 > Status note: MVP and Phase 2 are complete.
 > `POST /v1/review/run` is async (enqueue + `run_id`) with persisted run status, chunk artifacts, idempotency, and run instrumentation.
@@ -30,14 +30,14 @@ Provide a modular architecture for document-level legal analysis that combines:
 - deterministic, explainable checks,
 - schema-constrained LLM analysis,
 - auditable persistence and retrieval,
-- and a clear path to search/indexing and multi-document reasoning.
+- and a clear path to operational hardening, search/indexing, and multi-document reasoning.
 
 ### 1.2 Core principles
 
 - Explainable outputs: each finding links to evidence and source (`rule` or `llm`).
 - Auditable runs: each run stores lifecycle, metadata, and persisted outputs.
 - Modular boundaries: Django apps grouped by bounded context under `apps/`.
-- Incremental complexity: ingestion and review first, then search and corpus-level features.
+- Incremental complexity: ingestion and review first, then operational hardening, search, and corpus-level features.
 
 ### 1.3 Non-goals (current)
 
@@ -85,6 +85,7 @@ Upload document
 
 ### 2.3 Planned scope (Phase 3+)
 
+- Deployment and operations maturity (Kubernetes/Terraform patterns, observability, runbooks).
 - `apps/search`: Elasticsearch indexing and search APIs.
 - `apps/cases`: multi-document family/grouping workflows.
 - `apps/strategy`: recommendation and next-action generation.
@@ -143,8 +144,8 @@ ai-legal-assistant/
 
 ### 4.2 Planned components (Phase 3+)
 
-- Search index (Elasticsearch) as derived store from Postgres.
 - Production deployment patterns (Kubernetes/Terraform hardening).
+- Search index (Elasticsearch) as derived store from Postgres.
 
 ---
 
@@ -333,7 +334,7 @@ Invariant:
 - `GET /v1/review-runs/{id}`
 - `GET /v1/documents/{id}/findings`
 
-### 8.2 Planned endpoints (Phase 3+)
+### 8.2 Planned endpoints (Phase 4+)
 
 - `GET /v1/search/*`
 - `POST /v1/contracts/*`
@@ -387,19 +388,19 @@ Invariant:
 
 ### Phase 3
 
-- Search/indexing (Elasticsearch) and quality loop (eval/debug tooling).
+- Kubernetes/Terraform ops maturity and runbooks.
 
 ### Phase 4
 
-- Contract families and composite "as-of" document views.
+- Search/indexing (Elasticsearch) and quality loop (eval/debug tooling).
 
 ### Phase 5
 
-- Deviation analysis across corpus baselines.
+- Contract families and composite "as-of" document views.
 
 ### Phase 6
 
-- Kubernetes/Terraform ops maturity and runbooks.
+- Deviation analysis across corpus baselines.
 
 ---
 
@@ -412,4 +413,4 @@ Invariant:
 
 ---
 
-*Last updated: March 3, 2026*
+*Last updated: March 14, 2026*

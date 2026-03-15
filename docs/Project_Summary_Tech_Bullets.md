@@ -2,7 +2,7 @@
 [https://github.com/markiskorova/ai-legal-assistant](https://github.com/markiskorova/ai-legal-assistant)
 
 - **Tech Stack (implemented):** Python (Django 5 + DRF), PostgreSQL 16 (Docker Compose) / SQLite (local dev), Celery + Redis, OpenAI API (strict JSON-schema validated outputs + embeddings), pgvector bootstrap for Postgres findings vectors, React 18 + TypeScript (Vite), Docker Compose  
-- **Tech Stack (planned / Phase 3+):** Elasticsearch search/indexing, Terraform/AWS hardening, Kubernetes deployment patterns, Prometheus/Grafana
+- **Tech Stack (planned / Phase 3+):** Terraform/AWS hardening, Kubernetes deployment patterns, Prometheus/Grafana, Elasticsearch search/indexing
 - **Methods / Keywords:** Context & prompt engineering; structured outputs with JSON Schema validation; hybrid rules+LLM analysis; evidence spans + provenance/traceability; async orchestration; idempotency; concurrency/rate controls; run instrumentation; embedding persistence + vector-ready storage
 
 - **Purpose:** Modular, transparent, and extensible platform demonstrating how LLMs *augment* (not replace) document-level legal analysis with explainable, auditable outputs.
@@ -23,6 +23,7 @@
   - Versioned API endpoints for upload, async run enqueueing, run status, and findings retrieval
 
 - **Architecture / Evolution Path (planned):**
+  - Deployment/ops maturity first: Kubernetes deployment patterns, Terraform-managed infrastructure, dashboards, and runbooks
   - `apps/search` for Elasticsearch-backed indexing and search APIs
   - Expanded semantic retrieval use-cases on top of existing pgvector foundation (for example similarity APIs and cross-entity vector search)
   - `apps/cases`, `apps/strategy`, and `apps/explain` for multi-document reasoning, recommendations, and richer provenance inspection
